@@ -82,6 +82,7 @@ class CSVWriter:
                 # Write data rows
                 for row in rows:
                     # Filter row to only include headers (remove extra fields)
+                    # Keep values as they are formatted in the entities (with thousands separators)
                     filtered_row = {k: row.get(k, '') for k in headers}
                     writer.writerow(filtered_row)
             

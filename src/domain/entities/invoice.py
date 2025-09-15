@@ -36,25 +36,41 @@ class FactInvoice:
     observaciones: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for CSV export."""
+        """Convert to dictionary for CSV export with proper number formatting."""
         return {
             "factura_id": self.factura_id,
             "fecha": self.fecha,
             "cliente_id": self.cliente_id,
             "vendedor_id": self.vendedor_id,
             "producto_codigo": self.producto_codigo,
-            "producto_cantidad": self.producto_cantidad,
-            "producto_precio": self.producto_precio,
-            "producto_descuento": self.producto_descuento,
-            "producto_total": self.producto_total,
+            "producto_cantidad": self._format_quantity(self.producto_cantidad),
+            "producto_precio": self._format_currency(self.producto_precio),
+            "producto_descuento": self._format_currency(self.producto_descuento),
+            "producto_total": self._format_currency(self.producto_total),
             "pago_id": self.pago_id,
-            "subtotal": self.subtotal,
-            "descuento_total": self.descuento_total,
-            "impuestos": self.impuestos,
-            "total": self.total,
+            "subtotal": self._format_currency(self.subtotal),
+            "descuento_total": self._format_currency(self.descuento_total),
+            "impuestos": self._format_currency(self.impuestos),
+            "total": self._format_currency(self.total),
             "estado": self.estado,
             "observaciones": self.observaciones
         }
+    
+    def _format_currency(self, value: float) -> str:
+        """Format currency values as plain decimal for Power BI compatibility."""
+        if value is None:
+            return "0.00"
+        return f"{value:.2f}"
+    
+    def _format_quantity(self, value: float) -> str:
+        """Format quantity values as plain numbers for Power BI compatibility."""
+        if value is None:
+            return "0"
+        # If it's a whole number, format as integer, otherwise with decimals
+        if value == int(value):
+            return f"{int(value)}"
+        else:
+            return f"{value:.2f}"
     
     @staticmethod
     def get_csv_headers() -> List[str]:
@@ -123,13 +139,19 @@ class DimProduct:
     precio_estandar: float = 0.0
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for CSV export."""
+        """Convert to dictionary for CSV export with proper number formatting."""
         return {
             "producto_codigo": self.producto_codigo,
             "descripcion": self.descripcion,
             "categoria": self.categoria,
-            "precio_estandar": self.precio_estandar
+            "precio_estandar": self._format_currency(self.precio_estandar)
         }
+    
+    def _format_currency(self, value: float) -> str:
+        """Format currency values as plain decimal for Power BI compatibility."""
+        if value is None:
+            return "0.00"
+        return f"{value:.2f}"
     
     @staticmethod
     def get_csv_headers() -> List[str]:
@@ -698,7 +720,7 @@ class InvoiceExportRow:
     observaciones: Optional[str] = None
     
     def to_csv_row(self) -> List[str]:
-        """Convert to CSV row format."""
+        """Convert to CSV row format with proper number formatting."""
         return [
             str(self.factura_id),
             self.fecha,
@@ -710,19 +732,32 @@ class InvoiceExportRow:
             self.vendedor_nombre,
             self.producto_codigo,
             self.producto_descripcion,
-            str(self.producto_cantidad),
-            str(self.producto_precio),
-            str(self.producto_descuento),
-            str(self.producto_total),
+            self._format_number_with_thousands_separator(self.producto_cantidad),
+            self._format_currency(self.producto_precio),
+            self._format_currency(self.producto_descuento),
+            self._format_currency(self.producto_total),
             self.pago_metodo,
-            str(self.pago_valor),
-            str(self.subtotal),
-            str(self.descuento_total),
-            str(self.impuestos),
-            str(self.total),
+            self._format_currency(self.pago_valor),
+            self._format_currency(self.subtotal),
+            self._format_currency(self.descuento_total),
+            self._format_currency(self.impuestos),
+            self._format_currency(self.total),
             self.estado,
             self.observaciones or ""
         ]
+    
+    def _format_currency(self, value: Decimal) -> str:
+        """Format currency values as plain decimal for Power BI compatibility."""
+        if value is None:
+            return "0.00"
+        # Convert to float for formatting, then format without thousands separator
+        return f"{float(value):.2f}"
+    
+    def _format_number_with_thousands_separator(self, value: int) -> str:
+        """Format integer values as plain numbers for Power BI compatibility."""
+        if value is None:
+            return "0"
+        return f"{value}"
     
     @staticmethod
     def get_csv_headers() -> List[str]:
