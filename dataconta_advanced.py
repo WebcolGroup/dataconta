@@ -35,6 +35,10 @@ from src.application.use_cases.invoice_use_cases import (
     ExportToBIRequest
 )
 
+# Financial Reports Integration
+from src.infrastructure.factories.financial_reports_factory import FinancialReportsFactory
+from src.presentation.financial_reports_integration import FinancialReportsIntegration
+
 
 class DataContaAdvancedApp:
     """Application principal con sistema de menús avanzado y funcionalidad completa"""
@@ -80,6 +84,9 @@ class DataContaAdvancedApp:
             if not self._siigo_adapter.authenticate(credentials):
                 self._logger.error("Failed to authenticate with Siigo API")
                 raise Exception("API authentication failed")
+            
+            # Setup Financial Reports components
+            self._setup_financial_reports()
             
             self._logger.info("Infrastructure setup completed successfully")
             
@@ -128,6 +135,41 @@ class DataContaAdvancedApp:
             self._license_validator,
             self._logger
         )
+    
+    def _setup_financial_reports(self):
+        """Set up financial reports components"""
+        try:
+            self._logger.info("Setting up financial reports components")
+            
+            # Create financial reports factory
+            financial_reports_factory = FinancialReportsFactory(
+                logger=self._logger,
+                file_storage=self._file_storage,
+                api_client=self._siigo_adapter,
+                config_provider=self._config
+            )
+            
+            # Create financial reports service
+            self._financial_reports_service = financial_reports_factory.create_financial_reports_service()
+            
+            # Create integration layer
+            self.financial_integration = FinancialReportsIntegration(
+                financial_reports_service=self._financial_reports_service,
+                logger=self._logger
+            )
+            
+            # Test components
+            test_results = financial_reports_factory.test_financial_components()
+            if not all(test_results.values()):
+                self._logger.warning(f"Some financial components failed tests: {test_results}")
+            else:
+                self._logger.info("All financial reports components tested successfully")
+            
+        except Exception as e:
+            self._logger.error(f"Failed to setup financial reports components: {e}")
+            # Don't raise exception to allow app to continue without financial reports
+            self._financial_reports_service = None
+            self._financial_reports_integration = None
     
     def _setup_menu_system(self):
         """Set up the advanced menu system"""
@@ -521,18 +563,18 @@ class DataContaAdvancedApp:
         try:
             while True:
                 print("\n" + "="*60)
-                print("💰 INFORMES FINANCIEROS")
+                print("💰 INFORMES FINANCIEROS AVANZADOS")
                 print("="*60)
-                print("📝 Reportes contables y análisis financiero")
+                print("📝 Sistema integrado de reportes contables con Siigo API")
                 print("-"*60)
                 print("1. 📊 Estado de Resultados (P&L)")
-                print("   📝 Informe de ingresos, gastos y utilidades")
+                print("   📝 Análisis completo de ingresos, gastos y márgenes")
                 print("2. ⚖️ Balance General")
-                print("   📝 Activos, pasivos y patrimonio")
-                print("3. 💸 Flujo de Caja")
-                print("   📝 Análisis de entradas y salidas de efectivo")
-                print("4. 🏦 Cuentas por Cobrar y Pagar")
-                print("   📝 Estado de deudas y acreencias")
+                print("   📝 Activos, pasivos, patrimonio e indicadores")
+                print("3. � Informe Financiero Completo")
+                print("   📝 Estado de Resultados + Balance + KPIs")
+                print("4. 🏦 Análisis de Cuentas (Próximamente)")
+                print("   📝 Cuentas por cobrar, pagar y flujo de caja")
                 print("-"*60)
                 print("9. 🔙 Volver al menú anterior")
                 print("0. 🚪 Salir")
@@ -546,18 +588,18 @@ class DataContaAdvancedApp:
                     elif option == "9":
                         return True
                     elif option == "1":
-                        self._handle_profit_loss_report()
+                        self._handle_estado_resultados()
                     elif option == "2":
-                        self._handle_balance_sheet_report()
+                        self._handle_balance_general()
                     elif option == "3":
-                        self._handle_cash_flow_report()
+                        self._handle_informe_completo()
                     elif option == "4":
-                        self._handle_accounts_report()
+                        print("⚠️  Funcionalidad en desarrollo - Próximamente disponible")
                     else:
                         print("❌ Opción no válida. Intente nuevamente.")
                     
-                    if option in ["1", "2", "3", "4"]:
-                        input("\n� Presione Enter para continuar...")
+                    if option in ["1", "2", "3"]:
+                        input("\n📌 Presione Enter para continuar...")
                     
                 except KeyboardInterrupt:
                     return False
@@ -722,33 +764,33 @@ class DataContaAdvancedApp:
     
     # Financial Reports Implementation
     
-    def _handle_profit_loss_report(self):
-        """Handle Profit & Loss Statement"""
-        print("📊 Estado de Resultados (P&L)")
-        print("-" * 40)
-        print("💰 Generando informe de ingresos, gastos y utilidades...")
-        print("🔧 Funcionalidad en desarrollo...")
-        print("📅 Período: Mes actual")
-        print("💡 Características planificadas:")
-        print("  • Ingresos por ventas")
-        print("  • Costos y gastos operativos")
-        print("  • Utilidad bruta y neta")
-        print("  • Comparativo vs período anterior")
-        return True
+    def _handle_estado_resultados(self):
+        """Handle Estado de Resultados with integrated system"""
+        try:
+            if not self.financial_integration:
+                print("❌ Sistema de informes financieros no disponible")
+                return False
+            
+            return self.financial_integration.generar_estado_resultados_interactivo()
+            
+        except Exception as e:
+            self._logger.error(f"Error generating Estado de Resultados: {e}")
+            print(f"❌ Error al generar Estado de Resultados: {e}")
+            return False
     
-    def _handle_balance_sheet_report(self):
-        """Handle Balance Sheet"""
-        print("⚖️ Balance General")
-        print("-" * 40)
-        print("🏛️ Generando estado de situación financiera...")
-        print("🔧 Funcionalidad en desarrollo...")
-        print("📅 Fecha de corte: Hoy")
-        print("💡 Características planificadas:")
-        print("  • Activos corrientes y no corrientes")
-        print("  • Pasivos y obligaciones")
-        print("  • Patrimonio y capital")
-        print("  • Ecuación contable balanceada")
-        return True
+    def _handle_balance_general(self):
+        """Handle Balance General with integrated system"""
+        try:
+            if not self.financial_integration:
+                print("❌ Sistema de informes financieros no disponible")
+                return False
+            
+            return self.financial_integration.generar_balance_general_interactivo()
+            
+        except Exception as e:
+            self._logger.error(f"Error generating Balance General: {e}")
+            print(f"❌ Error al generar Balance General: {e}")
+            return False
     
     def _handle_cash_flow_report(self):
         """Handle Cash Flow Statement"""
@@ -777,6 +819,20 @@ class DataContaAdvancedApp:
         print("  • Obligaciones por pagar")
         print("  • Indicadores de cartera")
         return True
+    
+    def _handle_informe_completo(self):
+        """Handle Complete Financial Report with integrated system"""
+        try:
+            if not self.financial_integration:
+                print("❌ Sistema de informes financieros no disponible")
+                return False
+            
+            return self.financial_integration.generar_informe_completo_interactivo()
+            
+        except Exception as e:
+            self._logger.error(f"Error generating complete financial report: {e}")
+            print(f"❌ Error al generar informe financiero completo: {e}")
+            return False
     
     # Operational Reports Implementation
     
