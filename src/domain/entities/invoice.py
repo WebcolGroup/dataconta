@@ -57,20 +57,20 @@ class FactInvoice:
         }
     
     def _format_currency(self, value: float) -> str:
-        """Format currency values as plain decimal for Power BI compatibility."""
+        """Format currency values with comma as decimal separator for Spanish/European locale."""
         if value is None:
-            return "0.00"
-        return f"{value:.2f}"
+            return "0,00"
+        return f"{value:.2f}".replace(".", ",")
     
     def _format_quantity(self, value: float) -> str:
-        """Format quantity values as plain numbers for Power BI compatibility."""
+        """Format quantity values with comma as decimal separator for Spanish/European locale."""
         if value is None:
             return "0"
         # If it's a whole number, format as integer, otherwise with decimals
         if value == int(value):
             return f"{int(value)}"
         else:
-            return f"{value:.2f}"
+            return f"{value:.2f}".replace(".", ",")
     
     @staticmethod
     def get_csv_headers() -> List[str]:
@@ -148,10 +148,10 @@ class DimProduct:
         }
     
     def _format_currency(self, value: float) -> str:
-        """Format currency values as plain decimal for Power BI compatibility."""
+        """Format currency values with comma as decimal separator for Spanish/European locale."""
         if value is None:
-            return "0.00"
-        return f"{value:.2f}"
+            return "0,00"
+        return f"{value:.2f}".replace(".", ",")
     
     @staticmethod
     def get_csv_headers() -> List[str]:
@@ -747,11 +747,11 @@ class InvoiceExportRow:
         ]
     
     def _format_currency(self, value: Decimal) -> str:
-        """Format currency values as plain decimal for Power BI compatibility."""
+        """Format currency values with comma as decimal separator for Spanish/European locale."""
         if value is None:
-            return "0.00"
-        # Convert to float for formatting, then format without thousands separator
-        return f"{float(value):.2f}"
+            return "0,00"
+        # Convert to float for formatting, then replace decimal separator
+        return f"{float(value):.2f}".replace(".", ",")
     
     def _format_number_with_thousands_separator(self, value: int) -> str:
         """Format integer values as plain numbers for Power BI compatibility."""
