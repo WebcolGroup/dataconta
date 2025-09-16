@@ -156,8 +156,8 @@ class DataContaMainWindow(QMainWindow):
         desc_label.setStyleSheet("color: #7f8c8d; font-size: 9pt;")
         reports_layout.addWidget(desc_label)
         
-        # Buttons
-        self.financial_reports_btn = QPushButton("💰 Informes Financieros")
+        # Financial Reports Buttons
+        self.financial_reports_btn = QPushButton("💰 Estado de Resultados")
         self.financial_reports_btn.setStyleSheet("""
             QPushButton { 
                 background-color: #e67e22; color: white; 
@@ -167,6 +167,17 @@ class DataContaMainWindow(QMainWindow):
             QPushButton:hover { background-color: #d35400; }
         """)
         reports_layout.addWidget(self.financial_reports_btn)
+        
+        self.balance_general_btn = QPushButton("🏦 Balance General")
+        self.balance_general_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #e67e22; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #d35400; }
+        """)
+        reports_layout.addWidget(self.balance_general_btn)
         
         self.operational_reports_btn = QPushButton("🏭 Informes Operativos")
         self.operational_reports_btn.setStyleSheet("""

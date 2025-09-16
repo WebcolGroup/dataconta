@@ -26,6 +26,10 @@ except ImportError:
     print("⚠️  PySide6 no está instalado. Instale con: pip install PySide6")
     print("📋 Ejecutando en modo consola...")
 
+# Financial Reports Integration
+from src.infrastructure.factories.financial_reports_factory import FinancialReportsFactory
+from src.presentation.financial_reports_integration import FinancialReportsIntegration
+
 
 class DataContaGUIApplication:
     """
@@ -162,6 +166,20 @@ class DataContaGUIApplication:
             self._config = EnvironmentConfigurationProvider(self.logger_adapter)
             
             self.siigo_api = SiigoAPIAdapter(self.logger_adapter)
+            
+            # Autenticar automáticamente con Siigo API usando credenciales de configuración
+            self.logger_adapter.info("Attempting authentication with Siigo API")
+            credentials = self._config.get_api_credentials()
+            if credentials and credentials.is_valid():
+                auth_result = self.siigo_api.authenticate(credentials)
+                if auth_result:
+                    self.logger_adapter.info("Authentication successful")
+                    self.logger_adapter.info("Successfully authenticated with Siigo API")
+                else:
+                    self.logger_adapter.warning("Authentication failed - continuing without API access")
+            else:
+                self.logger_adapter.warning("Invalid or missing API credentials - continuing without API access")
+            
             self.license_validator = LicenseValidatorAdapter(
                 license_url=self._config.get_license_url(),
                 logger=self.logger_adapter
@@ -207,6 +225,22 @@ class DataContaGUIApplication:
                 csv_exporter=self.csv_adapter,
                 bi_export_service=self.bi_export_service
             )
+            
+            # Crear sistema de informes financieros
+            self.logger.info("Creando servicio de informes financieros")
+            factory = FinancialReportsFactory(
+                logger=self.logger_adapter,
+                file_storage=self.file_storage,
+                api_client=self.siigo_api,
+                config_provider=self._config
+            )
+            financial_service = factory.create_financial_reports_service()
+            
+            self.financial_integration = FinancialReportsIntegration(
+                financial_reports_service=financial_service,
+                logger=self.logger_adapter
+            )
+            self.logger.info("Servicio de informes financieros creado exitosamente")
             
             self.logger.info("Componentes de aplicación inicializados")
             return True
@@ -265,6 +299,7 @@ class DataContaGUIApplication:
             
             # Reports
             self.main_window.financial_reports_btn.clicked.connect(self._on_financial_reports)
+            self.main_window.balance_general_btn.clicked.connect(self._on_balance_general)
             self.main_window.operational_reports_btn.clicked.connect(self._on_operational_reports)
             self.main_window.compliance_reports_btn.clicked.connect(self._on_compliance_reports)
             self.main_window.management_reports_btn.clicked.connect(self._on_management_reports)
@@ -468,13 +503,340 @@ class DataContaGUIApplication:
         self.main_window.log_message(f"🌐 Usuario API: {self._config.get_api_credentials().username}")
     
     def _on_financial_reports(self):
-        """Informes Financieros."""
-        self.main_window.log_message("💰 Informes Financieros")
-        self.main_window.log_message("🔧 Funcionalidad en desarrollo...")
-        self.main_window.log_message("💡 Características planificadas:")
-        self.main_window.log_message("  • Estado de Resultados")
-        self.main_window.log_message("  • Balance General")
-        self.main_window.log_message("  • Flujo de Caja")
+        """Generar Estado de Resultados con selección de períodos."""
+        try:
+            self.main_window.log_message("💰 Estado de Resultados - Selección de Períodos")
+            
+            if not hasattr(self, 'financial_integration') or not self.financial_integration:
+                self.main_window.log_message("❌ Sistema de informes financieros no disponible")
+                return
+            
+            # Obtener períodos sugeridos
+            periodos = self.financial_integration._service.get_tipos_periodo_sugeridos()
+            
+            if not periodos:
+                self.main_window.log_message("❌ No hay períodos disponibles")
+                return
+            
+            # Mostrar diálogo de selección de período
+            periodo_seleccionado = self._mostrar_dialogo_seleccion_periodo(periodos)
+            
+            if periodo_seleccionado:
+                fecha_inicio = periodo_seleccionado['fecha_inicio']
+                fecha_fin = periodo_seleccionado['fecha_fin']
+                
+                self.main_window.log_message(f"💰 Estado de Resultados - {periodo_seleccionado['nombre']}")
+                self.main_window.log_message(f"� Período: {fecha_inicio} - {fecha_fin}")
+                
+                # Generar el informe
+                result = self.financial_integration._service.generar_estado_resultados(
+                    fecha_inicio=fecha_inicio,
+                    fecha_fin=fecha_fin,
+                    formato_salida='json',
+                    incluir_kpis=True
+                )
+                
+                if result.success and result.data and "estado_resultados" in result.data:
+                    estado = result.data["estado_resultados"]
+                    self.main_window.log_message("✅ Estado de Resultados generado exitosamente")
+                    self.main_window.log_message(f"💰 Ventas Netas: ${estado['ventas_netas']:,.2f}")
+                    self.main_window.log_message(f"💸 Costo de Ventas: ${estado['costo_ventas']:,.2f}")
+                    self.main_window.log_message(f"💵 Utilidad Bruta: ${estado['utilidad_bruta']:,.2f}")
+                    self.main_window.log_message(f"💎 Utilidad Neta: ${estado['utilidad_neta']:,.2f}")
+                    self.main_window.log_message(f"📈 Margen Neto: {estado['margen_neto_porcentaje']:.2f}%")
+                    if result.file_path:
+                        self.main_window.log_message(f"📄 Guardado: {result.file_path}")
+                else:
+                    self.main_window.log_message("❌ Error al generar el informe")
+            else:
+                self.main_window.log_message("❌ Selección de período cancelada")
+                    
+        except Exception as e:
+            self.logger.error(f"Error en Estado de Resultados: {e}")
+            self.main_window.log_message(f"❌ Error: {str(e)}")
+
+    def _mostrar_dialogo_seleccion_periodo(self, periodos):
+        """Mostrar diálogo para seleccionar período de tiempo."""
+        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
+                                       QPushButton, QListWidget, QListWidgetItem, 
+                                       QLabel)
+        from PySide6.QtCore import Qt
+        
+        dialog = QDialog(self.main_window)
+        dialog.setWindowTitle("Seleccionar Período - Estado de Resultados")
+        dialog.setMinimumSize(500, 400)
+        dialog.setModal(True)
+        
+        # Layout principal
+        layout = QVBoxLayout(dialog)
+        
+        # Título
+        titulo = QLabel("Seleccione el período para el Estado de Resultados:")
+        titulo.setStyleSheet("font-weight: bold; font-size: 12px; margin-bottom: 10px;")
+        layout.addWidget(titulo)
+        
+        # Lista de períodos
+        lista_periodos = QListWidget()
+        lista_periodos.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 5px;
+                background-color: white;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            QListWidget::item:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QListWidget::item:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        
+        # Agregar períodos a la lista
+        for key, periodo in periodos.items():
+            texto = f"{periodo['nombre']} ({periodo['fecha_inicio']} - {periodo['fecha_fin']})"
+            item = QListWidgetItem(texto)
+            item.setData(Qt.UserRole, periodo)
+            lista_periodos.addItem(item)
+        
+        # Seleccionar el primer elemento por defecto
+        if lista_periodos.count() > 0:
+            lista_periodos.setCurrentRow(0)
+        
+        layout.addWidget(lista_periodos)
+        
+        # Botones
+        botones_layout = QHBoxLayout()
+        
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #545b62;
+            }
+        """)
+        
+        btn_generar = QPushButton("Generar Informe")
+        btn_generar.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        
+        botones_layout.addStretch()
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn_generar)
+        
+        layout.addLayout(botones_layout)
+        
+        # Conectar señales
+        btn_cancelar.clicked.connect(dialog.reject)
+        btn_generar.clicked.connect(dialog.accept)
+        lista_periodos.itemDoubleClicked.connect(dialog.accept)
+        
+        # Mostrar diálogo y obtener resultado
+        if dialog.exec() == QDialog.Accepted:
+            item_seleccionado = lista_periodos.currentItem()
+            if item_seleccionado:
+                return item_seleccionado.data(Qt.UserRole)
+        
+        return None
+
+    def _on_balance_general(self):
+        """Generar Balance General con selección de fechas de corte."""
+        try:
+            self.main_window.log_message("🏦 Balance General - Selección de Fechas de Corte")
+            
+            if not hasattr(self, 'financial_integration') or not self.financial_integration:
+                self.main_window.log_message("❌ Sistema de informes financieros no disponible")
+                return
+            
+            # Obtener fechas de corte sugeridas basadas en períodos
+            periodos = self.financial_integration._service.get_tipos_periodo_sugeridos()
+            
+            # Convertir períodos a fechas de corte (usar fecha fin como fecha de corte)
+            fechas_corte = {}
+            for key, periodo in periodos.items():
+                fechas_corte[key] = {
+                    'nombre': f"Balance al {periodo['fecha_fin']}",
+                    'fecha': periodo['fecha_fin']
+                }
+            
+            if not fechas_corte:
+                self.main_window.log_message("❌ No hay fechas de corte disponibles")
+                return
+            
+            # Mostrar diálogo de selección de fecha de corte
+            fecha_seleccionada = self._mostrar_dialogo_seleccion_fecha_corte(fechas_corte)
+            
+            if fecha_seleccionada:
+                fecha_corte = fecha_seleccionada['fecha']
+                
+                self.main_window.log_message(f"🏦 Balance General - {fecha_seleccionada['nombre']}")
+                self.main_window.log_message(f"📅 Fecha de Corte: {fecha_corte}")
+                
+                # Generar el informe
+                result = self.financial_integration._service.generar_balance_general(
+                    fecha_corte=fecha_corte,
+                    formato_salida='json',
+                    incluir_kpis=True,
+                    incluir_detalle=False
+                )
+                
+                if result.success and result.data and "balance_general" in result.data:
+                    balance = result.data["balance_general"]
+                    kpis = result.data.get("kpis", {})
+                    
+                    self.main_window.log_message("✅ Balance General generado exitosamente")
+                    self.main_window.log_message(f"💰 Total Activos: ${balance['total_activos']:,.2f}")
+                    self.main_window.log_message(f"💸 Total Pasivos: ${balance['total_pasivos']:,.2f}")
+                    self.main_window.log_message(f"💵 Total Patrimonio: ${balance['total_patrimonio']:,.2f}")
+                    self.main_window.log_message(f"🔍 Ratio Liquidez: {balance['ratio_liquidez']:.2f}")
+                    self.main_window.log_message(f"📊 Ratio Endeudamiento: {balance['ratio_endeudamiento']:.2f}")
+                    self.main_window.log_message(f"✅ Ecuación Contable: {'Válida' if balance['ecuacion_contable_valida'] else 'Inválida'}")
+                    if result.file_path:
+                        self.main_window.log_message(f"📄 Guardado: {result.file_path}")
+                else:
+                    self.main_window.log_message("❌ Error al generar el informe")
+            else:
+                self.main_window.log_message("❌ Selección de fecha cancelada")
+                    
+        except Exception as e:
+            self.logger.error(f"Error en Balance General: {e}")
+            self.main_window.log_message(f"❌ Error: {str(e)}")
+
+    def _mostrar_dialogo_seleccion_fecha_corte(self, fechas_corte):
+        """Mostrar diálogo para seleccionar fecha de corte para Balance General."""
+        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
+                                       QPushButton, QListWidget, QListWidgetItem, 
+                                       QLabel)
+        from PySide6.QtCore import Qt
+        
+        dialog = QDialog(self.main_window)
+        dialog.setWindowTitle("Seleccionar Fecha de Corte - Balance General")
+        dialog.setMinimumSize(500, 400)
+        dialog.setModal(True)
+        
+        # Layout principal
+        layout = QVBoxLayout(dialog)
+        
+        # Título
+        titulo = QLabel("Seleccione la fecha de corte para el Balance General:")
+        titulo.setStyleSheet("font-weight: bold; font-size: 12px; margin-bottom: 10px;")
+        layout.addWidget(titulo)
+        
+        # Lista de fechas
+        lista_fechas = QListWidget()
+        lista_fechas.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 5px;
+                background-color: white;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            QListWidget::item:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QListWidget::item:hover {
+                background-color: #f0f0f0;
+            }
+        """)
+        
+        # Agregar fechas a la lista
+        for key, fecha_info in fechas_corte.items():
+            if isinstance(fecha_info, dict):
+                texto = f"{fecha_info.get('nombre', key)} ({fecha_info.get('fecha', key)})"
+                item = QListWidgetItem(texto)
+                item.setData(Qt.UserRole, fecha_info)
+            else:
+                # Si es solo una fecha string
+                texto = f"{key} ({fecha_info})"
+                item = QListWidgetItem(texto)
+                item.setData(Qt.UserRole, {'nombre': key, 'fecha': fecha_info})
+            lista_fechas.addItem(item)
+        
+        # Seleccionar el primer elemento por defecto
+        if lista_fechas.count() > 0:
+            lista_fechas.setCurrentRow(0)
+        
+        layout.addWidget(lista_fechas)
+        
+        # Botones
+        botones_layout = QHBoxLayout()
+        
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #545b62;
+            }
+        """)
+        
+        btn_generar = QPushButton("Generar Balance")
+        btn_generar.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        
+        botones_layout.addStretch()
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn_generar)
+        
+        layout.addLayout(botones_layout)
+        
+        # Conectar señales
+        btn_cancelar.clicked.connect(dialog.reject)
+        btn_generar.clicked.connect(dialog.accept)
+        lista_fechas.itemDoubleClicked.connect(dialog.accept)
+        
+        # Mostrar diálogo y obtener resultado
+        if dialog.exec() == QDialog.Accepted:
+            item_seleccionado = lista_fechas.currentItem()
+            if item_seleccionado:
+                return item_seleccionado.data(Qt.UserRole)
+        
+        return None
     
     def _on_operational_reports(self):
         """Informes Operativos."""
