@@ -9,13 +9,14 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QTextEdit, QLineEdit, QDateEdit,
     QProgressBar, QMessageBox, QGroupBox, QFormLayout, QTabWidget,
-    QScrollArea, QFrame
+    QScrollArea, QFrame, QMenuBar, QMenu, QApplication
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont, QPalette
 
 from src.application.ports.interfaces import UserInterface, Logger
 from src.domain.entities.invoice import Invoice, InvoiceFilter
+from src.infrastructure.config.dynamic_menu_config import DynamicMenuManager
 
 
 class DataContaMainWindow(QMainWindow):
@@ -26,6 +27,12 @@ class DataContaMainWindow(QMainWindow):
         self._logger = logger
         self.setWindowTitle("DATACONTA - Sistema Avanzado de Gestión")
         self.setMinimumSize(1000, 700)
+        
+        # Inicializar gestor de menús dinámico
+        self.menu_manager = DynamicMenuManager("menu_config.json")
+        self.menu_manager.set_parent_window(self)
+        self.menu_manager.load_config()
+        
         self._setup_ui()
     
     def _setup_ui(self):
@@ -79,18 +86,66 @@ class DataContaMainWindow(QMainWindow):
         layout.addWidget(header_frame)
     
     def _setup_license_status(self, layout):
-        """Setup license status section."""
+        """Setup license status section with dynamic menu."""
         self.license_frame = QFrame()
         self.license_frame.setFrameStyle(QFrame.Box)
         self.license_frame.setStyleSheet("QFrame { background-color: #27ae60; color: white; padding: 8px; }")
         
-        license_layout = QHBoxLayout(self.license_frame)
+        license_layout = QVBoxLayout(self.license_frame)
         
+        # Crear menú horizontal dinámico
+        menu_layout = QHBoxLayout()
+        
+        # Crear botones de menú dinámicamente
+        menu_buttons = self.menu_manager.create_menu_buttons()
+        for button in menu_buttons:
+            menu_layout.addWidget(button)
+        
+        menu_layout.addStretch()  # Para empujar el resto hacia la derecha
+        
+        # Status de licencia
+        license_status_layout = QHBoxLayout()
         self.license_label = QLabel("📄 Licencia actual: 💼 Profesional")
         self.license_label.setStyleSheet("color: white; font-weight: bold;")
-        license_layout.addWidget(self.license_label)
+        license_status_layout.addWidget(self.license_label)
+        
+        # Agregar ambos layouts al frame principal
+        license_layout.addLayout(menu_layout)
+        license_layout.addLayout(license_status_layout)
         
         layout.addWidget(self.license_frame)
+    
+    def reload_dynamic_menu(self):
+        """Recargar configuración de menú dinámico."""
+        if hasattr(self, 'menu_manager'):
+            self.menu_manager.reload_config()
+            # Recrear la sección de licencia/menú
+            # Nota: Para una recarga completa, sería necesario recrear toda la interfaz
+            self._logger.info("Configuración de menú recargada")
+    
+    def add_menu_category_runtime(self, category_id: str, config: dict):
+        """Agregar categoría de menú en tiempo de ejecución."""
+        if hasattr(self, 'menu_manager'):
+            success = self.menu_manager.add_menu_category(category_id, config)
+            if success:
+                self._logger.info(f"Categoría {category_id} agregada exitosamente")
+                return True
+            else:
+                self._logger.error(f"Error agregando categoría {category_id}")
+                return False
+        return False
+    
+    def remove_menu_category_runtime(self, category_id: str):
+        """Remover categoría de menú en tiempo de ejecución."""
+        if hasattr(self, 'menu_manager'):
+            success = self.menu_manager.remove_menu_category(category_id)
+            if success:
+                self._logger.info(f"Categoría {category_id} removida exitosamente")
+                return True
+            else:
+                self._logger.error(f"Error removiendo categoría {category_id}")
+                return False
+        return False
     
     def _setup_main_menu(self, layout):
         """Setup the main menu sections."""

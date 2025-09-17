@@ -1,0 +1,99 @@
+{
+  "horizontal_menu": {
+    "inicio": {
+      "label": "Inicio",
+      "icon": "🏠",
+      "enabled": true,
+      "submenu": [
+        {
+          "id": "salir",
+          "label": "Salir",
+          "icon": "🚪",
+          "action": "exit_application",
+          "confirmation": "¿Está seguro que desea salir de la aplicación?",
+          "enabled": true
+        }
+      ]
+    },
+    "ayuda": {
+      "label": "Ayuda",
+      "icon": "❓",
+      "enabled": true,
+      "submenu": [
+        {
+          "id": "guia_usuario",
+          "label": "Guía de usuario",
+          "icon": "📖",
+          "action": "show_user_guide",
+          "enabled": true
+        },
+        {
+          "id": "licencia",
+          "label": "Licencia",
+          "icon": "📄",
+          "action": "show_license",
+          "enabled": true
+        },
+        {
+          "id": "acerca_de",
+          "label": "Acerca de",
+          "icon": "ℹ️",
+          "action": "show_about",
+          "enabled": true
+        }
+      ]
+    },
+    "herramientas": {
+      "label": "Herramientas",
+      "icon": "🔧",
+      "enabled": true,
+      "submenu": [
+        {
+          "id": "configuracion",
+          "label": "Configuración",
+          "icon": "⚙️",
+          "action": "show_settings",
+          "enabled": true
+        },
+        {
+          "id": "logs",
+          "label": "Ver Logs",
+          "icon": "📋",
+          "action": "show_logs",
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "menu_actions": {
+    "exit_application": {
+      "type": "system",
+      "description": "Cerrar la aplicación"
+    },
+    "show_user_guide": {
+      "type": "dialog",
+      "title": "Guía de Usuario",
+      "content": "📖 GUÍA DE USUARIO - DATACONTA\n\n🏢 FUNCIONALIDADES PRINCIPALES:\n\n1. 📊 BUSINESS INTELLIGENCE:\n   - Exportar facturas a formato CSV\n   - Generar tablas dimensionales para análisis\n   - Crear reportes ejecutivos\n\n2. 💰 ESTADO DE RESULTADOS:\n   - Generar estados financieros por período\n   - Análisis de ingresos y gastos\n   - KPIs financieros automáticos\n\n3. 🏦 ESTADO DE SITUACIÓN FINANCIERA:\n   - Balance por fecha de corte\n   - Clasificación de activos, pasivos y patrimonio\n   - Indicadores financieros clave\n\n📋 INSTRUCCIONES DE USO:\n- Seleccione la funcionalidad deseada\n- Configure los parámetros según necesidad\n- Los resultados se guardan en la carpeta 'outputs'\n\n🔧 SOPORTE TÉCNICO:\n- Consulte la documentación técnica\n- Revise los logs de la aplicación"
+    },
+    "show_license": {
+      "type": "dialog",
+      "title": "Información de Licencia",
+      "content": "📄 INFORMACIÓN DE LICENCIA - DATACONTA\n\n🏢 Sistema Avanzado de Gestión Empresarial\n\n📋 TÉRMINOS DE USO:\n• Este software está diseñado para integración con API de Siigo\n• Uso exclusivo para análisis financiero y contable\n• Mantiene arquitectura hexagonal y principios SOLID\n\n🔒 LICENCIA ACTUAL: PROFESIONAL\n• Acceso completo a todas las funcionalidades\n• Soporte técnico incluido\n• Actualizaciones automáticas\n\n👨‍💻 DESARROLLADO POR:\n• Arquitectura: Hexagonal (Clean Architecture)\n• Framework GUI: PySide6 (Qt6)\n• Principios: SOLID, Clean Code\n\n📧 CONTACTO Y SOPORTE:\n• Documentación técnica integrada\n• Sistema de logs para diagnóstico\n• Interfaz intuitiva y profesional\n\n© 2025 DATACONTA - Todos los derechos reservados"
+    },
+    "show_about": {
+      "type": "dialog",
+      "title": "Acerca de DATACONTA",
+      "content": "🏢 DATACONTA v2.0\n\n🎯 SISTEMA AVANZADO DE GESTIÓN EMPRESARIAL\n\n✨ CARACTERÍSTICAS:\n• Interfaz gráfica moderna con PySide6\n• Arquitectura hexagonal (Clean Architecture)\n• Integración completa con API de Siigo\n• Reportes financieros automatizados\n• Business Intelligence integrado\n\n🛠️ TECNOLOGÍAS:\n• Python 3.11+\n• PySide6 (Qt6)\n• Arquitectura Hexagonal\n• Principios SOLID\n• Clean Code\n\n📅 Versión: 2.0.0\n📍 Build: 2025.09.17\n\n© 2025 - Todos los derechos reservados"
+    },
+    "show_settings": {
+      "type": "dialog",
+      "title": "Configuración",
+      "content": "⚙️ CONFIGURACIÓN DEL SISTEMA\n\n🔧 CONFIGURACIONES DISPONIBLES:\n\n• Variables de entorno (.env)\n• Configuración de API de Siigo\n• Rutas de archivos de salida\n• Niveles de logging\n• Formatos de exportación\n\n📝 NOTA:\nLas configuraciones se gestionan a través del archivo .env\nPara cambios avanzados, consulte la documentación técnica."
+    },
+    "show_logs": {
+      "type": "dialog",
+      "title": "Logs del Sistema",
+      "content": "📋 SISTEMA DE LOGS\n\n📁 UBICACIONES DE LOGS:\n• Logs de aplicación: app.log\n• Logs de consola: Ventana de salida\n• Logs de API: Incluidos en app.log\n\n🔍 NIVELES DE LOG:\n• INFO: Información general\n• WARNING: Advertencias\n• ERROR: Errores del sistema\n• DEBUG: Información detallada\n\n💡 RECOMENDACIÓN:\nRevise los logs en caso de errores o comportamiento inesperado."
+    }
+  }
+}
