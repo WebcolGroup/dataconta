@@ -139,25 +139,25 @@ class FinancialReportsIntegration:
             return {"success": False, "message": error_msg}
     
     # ========================================================================================
-    # MÉTODOS PARA EL MENÚ PRINCIPAL - BALANCE GENERAL
+    # MÉTODOS PARA EL MENÚ PRINCIPAL - ESTADO DE SITUACIÓN FINANCIERA
     # ========================================================================================
     
     def generar_balance_general_interactivo(self) -> Dict[str, Any]:
         """
-        Generar Balance General con interacción de usuario.
+        Generar Estado de Situación Financiera con interacción de usuario.
         Método para ser llamado desde el menú principal.
         
         Returns:
             Resultado de la operación
         """
         try:
-            self._logger.info("Iniciando generación interactiva de Balance General")
+            self._logger.info("Iniciando generación interactiva de Estado de Situación Financiera")
             
             # Mostrar fechas sugeridas
             fechas_sugeridas = self._service.get_fechas_corte_sugeridas()
             
             print("\n" + "="*70)
-            print("                  GENERACIÓN DE BALANCE GENERAL")
+            print("                  GENERACIÓN DE ESTADO DE SITUACIÓN FINANCIERA")
             print("="*70)
             
             print("\nFechas de corte sugeridas:")
@@ -213,7 +213,7 @@ class FinancialReportsIntegration:
                 print(f"Formato inválido, usando {formato}")
             
             # Generar informe
-            print(f"\n🔄 Generando Balance General para fecha {fecha_corte}...")
+            print(f"\n🔄 Generando Estado de Situación Financiera para fecha {fecha_corte}...")
             
             response = self._service.generar_balance_general(
                 fecha_corte=fecha_corte,
@@ -226,7 +226,7 @@ class FinancialReportsIntegration:
                 self._mostrar_resultado_balance_general(response)
                 return {
                     "success": True,
-                    "message": "Balance General generado exitosamente",
+                    "message": "Estado de Situación Financiera generado exitosamente",
                     "data": response.data,
                     "file_path": response.file_path,
                     "execution_time": response.execution_time_seconds
@@ -239,7 +239,7 @@ class FinancialReportsIntegration:
                 }
                 
         except Exception as e:
-            error_msg = f"Error generando Balance General: {str(e)}"
+            error_msg = f"Error generando Estado de Situación Financiera: {str(e)}"
             self._logger.error(error_msg)
             print(f"❌ {error_msg}")
             return {"success": False, "message": error_msg}
@@ -261,7 +261,7 @@ class FinancialReportsIntegration:
             print("\n" + "="*70)
             print("            GENERACIÓN DE INFORME FINANCIERO COMPLETO")
             print("="*70)
-            print("Este informe incluye Estado de Resultados + Balance General + KPIs")
+            print("Este informe incluye Estado de Resultados + Estado de Situación Financiera + KPIs")
             
             # Solicitar período para Estado de Resultados
             periodos_sugeridos = self._service.get_tipos_periodo_sugeridos()
@@ -308,10 +308,10 @@ class FinancialReportsIntegration:
                 except KeyboardInterrupt:
                     return {"success": False, "message": "Operación cancelada por el usuario"}
             
-            # Solicitar fecha de corte para Balance General
+            # Solicitar fecha de corte para Estado de Situación Financiera
             fechas_sugeridas = self._service.get_fechas_corte_sugeridas()
             
-            print("\n2️⃣ FECHA DE CORTE PARA BALANCE GENERAL")
+            print("\n2️⃣ FECHA DE CORTE PARA ESTADO DE SITUACIÓN FINANCIERA")
             for idx, (key, fecha) in enumerate(fechas_sugeridas.items(), 1):
                 print(f"{idx}. {key.replace('_', ' ').title()}: {fecha}")
             
@@ -329,7 +329,7 @@ class FinancialReportsIntegration:
                             fecha_corte_balance = fechas_sugeridas[fecha_keys[opcion - 1]]
                             break
                         elif opcion == len(fechas_sugeridas) + 1:
-                            fecha_corte_balance = input("Fecha corte Balance General (YYYY-MM-DD): ").strip()
+                            fecha_corte_balance = input("Fecha corte Estado de Situación Financiera (YYYY-MM-DD): ").strip()
                             
                             validacion = self._service.validar_parametros_balance_general(fecha_corte_balance)
                             if validacion['valid']:
@@ -362,7 +362,7 @@ class FinancialReportsIntegration:
             # Generar informe
             print(f"\n🔄 Generando informe financiero completo...")
             print(f"   📊 Estado de Resultados: {fecha_inicio} - {fecha_fin}")
-            print(f"   💰 Balance General: {fecha_corte_balance}")
+            print(f"   💰 Estado de Situación Financiera: {fecha_corte_balance}")
             
             response = self._service.generar_informe_completo(
                 fecha_inicio=fecha_inicio,
@@ -442,15 +442,15 @@ class FinancialReportsIntegration:
         print()
     
     def _mostrar_resultado_balance_general(self, response) -> None:
-        """Mostrar resultado del Balance General en consola."""
+        """Mostrar resultado del Estado de Situación Financiera en consola."""
         if not response.data or "balance_general" not in response.data:
-            print("❌ No se pudo obtener datos del Balance General")
+            print("❌ No se pudo obtener datos del Estado de Situación Financiera")
             return
         
         balance = response.data["balance_general"]
         
         print("\n" + "="*70)
-        print("                      BALANCE GENERAL")
+        print("                      ESTADO DE SITUACIÓN FINANCIERA")
         print("="*70)
         print(f"Fecha de Corte: {balance['fecha_corte']}")
         print(f"Moneda: {balance['moneda']}")
@@ -566,7 +566,7 @@ class FinancialReportsIntegration:
         """
         return {
             "estado_resultados": "Generar Estado de Resultados",
-            "balance_general": "Generar Balance General", 
+            "balance_general": "Generar Estado de Situación Financiera", 
             "informe_completo": "Generar Informe Financiero Completo"
         }
     

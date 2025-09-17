@@ -1,6 +1,6 @@
 """
 Domain services for Financial Reports.
-Contains business logic for Estado de Resultados and Balance General.
+Contains business logic for Estado de Resultados and Estado de Situación Financiera.
 """
 
 from abc import ABC, abstractmethod
@@ -60,7 +60,7 @@ class EstadoResultadosService(ABC):
 
 class BalanceGeneralService(ABC):
     """
-    Servicio de dominio para el cálculo del Balance General.
+    Servicio de dominio para el cálculo del Estado de Situación Financiera.
     """
     
     @abstractmethod
@@ -70,7 +70,7 @@ class BalanceGeneralService(ABC):
         fecha_corte: datetime
     ) -> BalanceGeneral:
         """
-        Calcular Balance General basado en el balance de prueba.
+        Calcular Estado de Situación Financiera basado en el balance de prueba.
         
         Args:
             cuentas_balance: Lista de cuentas con saldos
@@ -124,7 +124,7 @@ class InformeFinancieroService(ABC):
         
         Args:
             estado_resultados: Estado de Resultados calculado
-            balance_general: Balance General calculado
+            balance_general: Estado de Situación Financiera calculado
             periodo: Período del informe
             
         Returns:
@@ -234,7 +234,7 @@ class EstadoResultadosServiceImpl(EstadoResultadosService):
 
 class BalanceGeneralServiceImpl(BalanceGeneralService):
     """
-    Implementación concreta del servicio de Balance General.
+    Implementación concreta del servicio de Estado de Situación Financiera.
     """
     
     def calcular_balance_general(
@@ -242,7 +242,7 @@ class BalanceGeneralServiceImpl(BalanceGeneralService):
         cuentas_balance: List[CuentaContable],
         fecha_corte: datetime
     ) -> BalanceGeneral:
-        """Calcular Balance General."""
+        """Calcular Estado de Situación Financiera."""
         
         # Clasificar cuentas
         activos_corrientes = self.clasificar_activos_corrientes(cuentas_balance)

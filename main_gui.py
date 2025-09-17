@@ -663,9 +663,9 @@ class DataContaGUIApplication:
         return None
 
     def _on_balance_general(self):
-        """Generar Balance General con selección de fechas de corte."""
+        """Generar Estado de Situación Financiera con selección de fechas de corte."""
         try:
-            self.main_window.log_message("🏦 Balance General - Selección de Fechas de Corte")
+            self.main_window.log_message("🏦 Estado de Situación Financiera - Selección de Fechas de Corte")
             
             if not hasattr(self, 'financial_integration') or not self.financial_integration:
                 self.main_window.log_message("❌ Sistema de informes financieros no disponible")
@@ -692,7 +692,7 @@ class DataContaGUIApplication:
             if fecha_seleccionada:
                 fecha_corte = fecha_seleccionada['fecha']
                 
-                self.main_window.log_message(f"🏦 Balance General - {fecha_seleccionada['nombre']}")
+                self.main_window.log_message(f"🏦 Estado de Situación Financiera - {fecha_seleccionada['nombre']}")
                 self.main_window.log_message(f"📅 Fecha de Corte: {fecha_corte}")
                 
                 # Generar el informe
@@ -707,7 +707,7 @@ class DataContaGUIApplication:
                     balance = result.data["balance_general"]
                     kpis = result.data.get("kpis", {})
                     
-                    self.main_window.log_message("✅ Balance General generado exitosamente")
+                    self.main_window.log_message("✅ Estado de Situación Financiera generado exitosamente")
                     self.main_window.log_message(f"💰 Total Activos: ${balance['total_activos']:,.2f}")
                     self.main_window.log_message(f"💸 Total Pasivos: ${balance['total_pasivos']:,.2f}")
                     self.main_window.log_message(f"💵 Total Patrimonio: ${balance['total_patrimonio']:,.2f}")
@@ -722,18 +722,18 @@ class DataContaGUIApplication:
                 self.main_window.log_message("❌ Selección de fecha cancelada")
                     
         except Exception as e:
-            self.logger.error(f"Error en Balance General: {e}")
+            self.logger.error(f"Error en Estado de Situación Financiera: {e}")
             self.main_window.log_message(f"❌ Error: {str(e)}")
 
     def _mostrar_dialogo_seleccion_fecha_corte(self, fechas_corte):
-        """Mostrar diálogo para seleccionar fecha de corte para Balance General."""
+        """Mostrar diálogo para seleccionar fecha de corte para Estado de Situación Financiera."""
         from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
                                        QPushButton, QListWidget, QListWidgetItem, 
                                        QLabel)
         from PySide6.QtCore import Qt
         
         dialog = QDialog(self.main_window)
-        dialog.setWindowTitle("Seleccionar Fecha de Corte - Balance General")
+        dialog.setWindowTitle("Seleccionar Fecha de Corte - Estado de Situación Financiera")
         dialog.setMinimumSize(500, 400)
         dialog.setModal(True)
         
@@ -741,7 +741,7 @@ class DataContaGUIApplication:
         layout = QVBoxLayout(dialog)
         
         # Título
-        titulo = QLabel("Seleccione la fecha de corte para el Balance General:")
+        titulo = QLabel("Seleccione la fecha de corte para el Estado de Situación Financiera:")
         titulo.setStyleSheet("font-weight: bold; font-size: 12px; margin-bottom: 10px;")
         layout.addWidget(titulo)
         

@@ -1,6 +1,6 @@
 """
 Domain entities for Financial Reports.
-Contains the core business entities for Estado de Resultados and Balance General.
+Contains the core business entities for Estado de Resultados and Estado de Situación Financiera.
 """
 
 from dataclasses import dataclass
@@ -95,7 +95,7 @@ class EstadoResultados:
 @dataclass
 class BalanceGeneral:
     """
-    Entidad de dominio para el Balance General.
+    Entidad de dominio para el Estado de Situación Financiera.
     Representa la situación financiera de la empresa en un momento específico.
     """
     
@@ -162,7 +162,7 @@ class BalanceGeneral:
         return self.total_pasivos / self.total_activos
     
     def is_valid(self) -> bool:
-        """Validar reglas de negocio del balance general."""
+        """Validar reglas de negocio del estado de situación financiera."""
         return (
             self.fecha_corte is not None and
             self.total_activos >= 0 and
@@ -287,7 +287,7 @@ class PeriodoFiscal:
 @dataclass
 class InformeFinancieroResumen:
     """
-    Entidad que combina el Estado de Resultados y Balance General
+    Entidad que combina el Estado de Resultados y Estado de Situación Financiera
     para proporcionar una vista integral de la situación financiera.
     """
     

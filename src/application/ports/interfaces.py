@@ -223,7 +223,7 @@ class InvoiceProcessor(ABC):
 
 
 # ========================================================================================
-# PUERTOS PARA INFORMES FINANCIEROS (Estado de Resultados y Balance General)
+# PUERTOS PARA INFORMES FINANCIEROS (Estado de Resultados y Estado de Situación Financiera)
 # ========================================================================================
 
 class EstadoResultadosRepository(ABC):
@@ -283,7 +283,7 @@ class EstadoResultadosRepository(ABC):
 
 
 class BalanceGeneralRepository(ABC):
-    """Port for Balance General data access."""
+    """Port for Estado de Situación Financiera data access."""
     
     @abstractmethod
     def obtener_balance_general(self, fecha_corte: datetime) -> BalanceGeneral:

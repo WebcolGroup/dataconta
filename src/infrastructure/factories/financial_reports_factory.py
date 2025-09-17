@@ -210,7 +210,7 @@ class FinancialReportsFactory:
             },
             "supported_reports": [
                 "Estado de Resultados",
-                "Balance General",
+                "Estado de Situación Financiera",
                 "Informe Financiero Completo"
             ],
             "api_endpoints": [

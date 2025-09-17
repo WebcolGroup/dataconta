@@ -168,7 +168,7 @@ class DataContaMainWindow(QMainWindow):
         """)
         reports_layout.addWidget(self.financial_reports_btn)
         
-        self.balance_general_btn = QPushButton("🏦 Balance General")
+        self.balance_general_btn = QPushButton("🏦 Estado de Situación Financiera")
         self.balance_general_btn.setStyleSheet("""
             QPushButton { 
                 background-color: #e67e22; color: white; 

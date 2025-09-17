@@ -1,6 +1,6 @@
 """
 Financial Reports Repositories.
-Infrastructure repositories for Estado de Resultados and Balance General.
+Infrastructure repositories for Estado de Resultados and Estado de Situación Financiera.
 """
 
 from typing import List, Dict, Any, Optional
@@ -295,7 +295,7 @@ class SiigoEstadoResultadosRepository(EstadoResultadosRepository):
 
 class SiigoBalanceGeneralRepository(BalanceGeneralRepository):
     """
-    Repositorio para Balance General usando API de Siigo.
+    Repositorio para Estado de Situación Financiera usando API de Siigo.
     """
     
     def __init__(
@@ -316,7 +316,7 @@ class SiigoBalanceGeneralRepository(BalanceGeneralRepository):
     
     def obtener_balance_general(self, fecha_corte: datetime) -> BalanceGeneral:
         """
-        Obtener Balance General para una fecha de corte específica.
+        Obtener Estado de Situación Financiera para una fecha de corte específica.
         
         Args:
             fecha_corte: Fecha de corte para el balance
@@ -325,7 +325,7 @@ class SiigoBalanceGeneralRepository(BalanceGeneralRepository):
             BalanceGeneral con los datos calculados
         """
         try:
-            self._logger.info(f"Obteniendo Balance General para fecha {fecha_corte.strftime('%Y-%m-%d')}")
+            self._logger.info(f"Obteniendo Estado de Situación Financiera para fecha {fecha_corte.strftime('%Y-%m-%d')}")
             
             # Obtener balance de prueba
             cuentas_balance = self.obtener_balance_prueba(fecha_corte)
@@ -336,11 +336,11 @@ class SiigoBalanceGeneralRepository(BalanceGeneralRepository):
                 fecha_corte=fecha_corte
             )
             
-            self._logger.info("Balance General calculado exitosamente")
+            self._logger.info("Estado de Situación Financiera calculado exitosamente")
             return balance_general
             
         except Exception as e:
-            self._logger.error(f"Error obteniendo Balance General: {str(e)}")
+            self._logger.error(f"Error obteniendo Estado de Situación Financiera: {str(e)}")
             raise
     
     def obtener_balance_prueba(self, fecha_corte: datetime) -> List[CuentaContable]:
@@ -482,7 +482,7 @@ class SiigoInformeFinancieroRepository(InformeFinancieroRepository):
         
         Args:
             estado_resultados_repo: Repositorio de Estado de Resultados
-            balance_general_repo: Repositorio de Balance General
+            balance_general_repo: Repositorio de Estado de Situación Financiera
             logger: Logger para registrar operaciones
         """
         self._estado_resultados_repo = estado_resultados_repo
@@ -496,11 +496,11 @@ class SiigoInformeFinancieroRepository(InformeFinancieroRepository):
         fecha_corte_balance: datetime
     ) -> InformeFinancieroResumen:
         """
-        Generar informe financiero completo combinando Estado de Resultados y Balance General.
+        Generar informe financiero completo combinando Estado de Resultados y Estado de Situación Financiera.
         
         Args:
             periodo: Período para el Estado de Resultados
-            fecha_corte_balance: Fecha de corte para el Balance General
+            fecha_corte_balance: Fecha de corte para el Estado de Situación Financiera
             
         Returns:
             InformeFinancieroResumen completo con ambos informes y KPIs
@@ -511,7 +511,7 @@ class SiigoInformeFinancieroRepository(InformeFinancieroRepository):
             # Obtener Estado de Resultados
             estado_resultados = self._estado_resultados_repo.obtener_estado_resultados(periodo)
             
-            # Obtener Balance General
+            # Obtener Estado de Situación Financiera
             balance_general = self._balance_general_repo.obtener_balance_general(fecha_corte_balance)
             
             # Usar el servicio de dominio para combinar
