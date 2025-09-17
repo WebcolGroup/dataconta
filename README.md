@@ -1,45 +1,110 @@
 # DataConta - Sistema Avanzado de Gestión con Interfaz Gráfica
 
-**DataConta** es un sistema profesional de gestión financiera desarrollado en Python con **doble interfaz: CLI y GUI**, implementando **Arquitectura Hexagonal** completa con capacidades avanzadas de exportación, Business Intelligence e **Informes Financieros Automatizados**.
+**DataConta** es un sistema profesional de gestión financiera desarrollado en Pyt### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+** 💼
+```bash
+python main_gui.py
+```
+- **Interfaz moderna** con PySide6 (solo PROFESSIONAL y ENTERPRISE)
+- **Menús dinámicos** configurables según licencia
+- **Informes integrados** con validación automática de permisos
+- **Navegación intuitiva** con restricciones por tipo de licencia
+- **Indicador visual** de licencia activa y límites disponibles
+
+#### **⌨️ Interfaz de Línea de Comandos (CLI) - Todas las Licencias** 🆓
+```bash
+python main_hexagonal.py          # CLI completa con validación de licencia
+python dataconta_advanced.py      # CLI avanzada (funciones según licencia)
+```
+- **Disponible en todas las licencias** (FREE, PROFESSIONAL, ENTERPRISE)
+- **Funciones adaptadas** según tipo de licencia activa
+- **Límites automáticos** aplicados transparentemente
+- **Mensajes informativos** sobre restricciones activase interfaz: CLI y GUI**, implementando **Arquitectura Hexagonal** completa con capacidades avanzadas de exportación, Business Intelligence e **Informes Financieros Automatizados**.
+
+## 🎫 Sistema de Licencias - NUEVO (v3.0.0)
+
+DataConta ahora incluye un **sistema completo de licencias de 3 niveles** adaptado a diferentes necesidades empresariales:
+
+### 💰 **FREE (Gratuita)**
+- ✅ **Interfaz CLI completa**
+- ✅ **Hasta 500 facturas** por consulta
+- ✅ **Exportación básica CSV**
+- ✅ **Validación de API**
+- ❌ No incluye GUI
+- ❌ No incluye BI Export
+- ❌ No incluye informes financieros
+
+### 💼 **PROFESSIONAL (Profesional)**
+- ✅ **Todo lo de FREE +**
+- ✅ **Interfaz GUI completa con PySide6**
+- ✅ **Hasta 2,000 facturas** por consulta
+- ✅ **Business Intelligence Export** (limitado)
+- ✅ **Informes financieros básicos**
+- ✅ **Menús dinámicos configurables**
+- ✅ **Dashboard integrado**
+
+### 🏢 **ENTERPRISE (Empresarial)**
+- ✅ **Todo lo de PROFESSIONAL +**
+- ✅ **Facturas ilimitadas**
+- ✅ **BI Export completo sin restricciones**
+- ✅ **Informes financieros avanzados**
+- ✅ **Sincronización en tiempo real**
+- ✅ **Soporte multi-usuario** (próximamente)
+- ✅ **API REST integrada** (próximamente)
+- ✅ **Soporte prioritario**
+
+### 🔐 **Configuración de Licencia**
+```bash
+# En su archivo .env
+LICENSE_TYPE=PROFESSIONAL  # FREE, PROFESSIONAL, ENTERPRISE
+LICENSE_KEY=PROF-2024-TEST-DEMO-001A
+
+# Verificación automática al iniciar
+✅ Licencia PROFESSIONAL válida - 2000 facturas disponibles
+```
 
 ## 🎯 Características Principales
 
-### ✨ **Funcionalidades Actuales (Septiembre 2025)**
-- �️ **Interfaz Gráfica Moderna**: GUI completa con PySide6 y menús dinámicos configurables
-- 📊 **Informes Financieros**: Estado de Resultados y Estado de Situación Financiera automatizados
-- �📋 **Consulta de Facturas**: Obtención de facturas de venta con filtros avanzados
-- 📤 **Exportación CSV**: Exportación directa de facturas a formato CSV normalizado
-- 🏢 **Business Intelligence**: Generación de modelo estrella para Power BI
-- 🔍 **Verificación API**: Monitoreo del estado y conectividad de la API
-- 📁 **Gestión de Archivos**: Visualización y administración de archivos generados
-- 🔐 **Validación de Licencias**: Sistema robusto de autenticación y autorización
-- 📊 **Logging Avanzado**: Sistema completo de registro de actividades
-- 🎛️ **Menús Dinámicos**: Sistema configurable vía JSON sin tocar código
+### ✨ **Funcionalidades Actuales (Diciembre 2024)**
+- 🎫 **Sistema de Licencias de 3 Niveles**: FREE, PROFESSIONAL, ENTERPRISE con características específicas
+- 🏢️ **Interfaz Gráfica Moderna**: GUI completa con PySide6 y menús dinámicos configurables (PROFESSIONAL+)
+- 📊 **Informes Financieros**: Estado de Resultados y Estado de Situación Financiera automatizados (PROFESSIONAL+)
+- 📋 **Consulta de Facturas**: Obtención de facturas de venta con filtros avanzados (límites por licencia)
+- 📤 **Exportación CSV**: Exportación directa de facturas a formato CSV normalizado (todas las licencias)
+- 🏢 **Business Intelligence**: Generación de modelo estrella para Power BI (PROFESSIONAL+ con límites)
+- 🔍 **Verificación API**: Monitoreo del estado y conectividad de la API (todas las licencias)
+- 📁 **Gestión de Archivos**: Visualización y administración de archivos generados (todas las licencias)
+- 🔐 **Validación de Licencias**: Sistema robusto de autenticación de 3 niveles
+- 📊 **Logging Avanzado**: Sistema completo de registro de actividades (todas las licencias)
+- 🎛️ **Menús Dinámicos**: Sistema configurable vía JSON sin tocar código (PROFESSIONAL+)
+- 🚦 **Control de Acceso**: Restricción automática de funciones según tipo de licencia
 
-### 🖥️ **Interfaz Gráfica Avanzada (PySide6)**
+### 🖥️ **Interfaz Gráfica Avanzada (PySide6)** 💼 PROFESSIONAL+
 
-DataConta incluye una **interfaz gráfica completa** desarrollada con PySide6:
+DataConta incluye una **interfaz gráfica completa** desarrollada con PySide6 (disponible en licencias PROFESSIONAL y ENTERPRISE):
 
 #### **🎨 Características de la GUI:**
 - **Interfaz Moderna**: Diseño profesional con Qt6
 - **Menús Dinámicos**: Sistema de menús horizontal configurable vía JSON
 - **Informes Integrados**: Generación de informes financieros desde la interfaz
-- **Validación de Licencia**: Indicador visual del estado de la licencia
+- **Validación de Licencia**: Indicador visual del estado y tipo de licencia
 - **Gestión Visual**: Navegación intuitiva por todas las funcionalidades
 - **Responsive Design**: Adaptable a diferentes tamaños de pantalla
+- **Control de Acceso**: Menús y funciones visibles según licencia activa
 
-#### **🎛️ Sistema de Menús Dinámico:**
+#### **🎛️ Sistema de Menús Dinámico (PROFESSIONAL+):**
 ```json
 {
   "horizontal_menu": {
     "inicio": {
       "label": "Inicio",
       "icon": "🏠",
+      "license_required": "PROFESSIONAL",
       "submenu": [...]
     },
-    "ayuda": {
-      "label": "Ayuda", 
-      "icon": "❓",
+    "informes": {
+      "label": "Informes", 
+      "icon": "📊",
+      "license_required": "PROFESSIONAL",
       "submenu": [...]
     }
   }
@@ -52,6 +117,7 @@ DataConta incluye una **interfaz gráfica completa** desarrollada con PySide6:
 - ✅ **Recarga Dinámica**: Cambios aplicados sin reiniciar
 - ✅ **Menús Contextuales**: Submenús profesionales con iconos
 - ✅ **Validación Automática**: Sistema robusto de validación de configuración
+- ✅ **Control de Licencia**: Menús automáticamente habilitados/deshabilitados según licencia
 
 ### 🏗️ **Arquitectura Hexagonal Implementada**
 
@@ -221,69 +287,85 @@ Genera un **modelo estrella completo** optimizado para Power BI:
 - **Validación Robusta**: Sistema de validación automática de configuración
 - **Iconos y Estilos**: Soporte completo para iconos emoji y estilos CSS
 
-## 💻 Interfaces Disponibles
+## 💻 Interfaces Disponibles con Control de Licencias
 
-### **🖥️ Interfaz Gráfica (GUI) - Recomendada**
+### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+ 💼**
 ```
 🖥️ DATACONTA - Sistema Avanzado de Gestión
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ 🏠 Inicio  ❓ Ayuda  🔧 Herramientas  📊 Reportes ┃  ← Menús dinámicos
-┃ 📄 Licencia: 💼 Profesional                      ┃  ← Estado en tiempo real  
+┃ 🏠 Inicio  ❓ Ayuda  🔧 Herramientas  📊 Reportes ┃  ← Menús según licencia
+┃ 📄 Licencia: 💼 PROFESSIONAL (2000 facturas)    ┃  ← Estado y límites  
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-📊 Informes Financieros Disponibles:
-├── 📈 Estado de Resultados
-├── ⚖️ Estado de Situación Financiera  
-├── 🏢 Exportación BI
-└── 📋 Consulta de Facturas
+📊 Funciones Disponibles según Licencia:
+├── 📈 Estado de Resultados (PROFESSIONAL+)
+├── ⚖️ Estado de Situación Financiera (PROFESSIONAL+)
+├── 🏢 Exportación BI (PROFESSIONAL+ con límites)
+└── 📋 Consulta de Facturas (con límites por licencia)
 ```
 
-### **⌨️ Interfaz CLI - Completa**
+### **⌨️ Interfaz CLI - Todas las Licencias 🆓💼🏢**
 ```
 🏢 DATACONTA - SIIGO API
 ==================================================
-1. 📋 Consultar Facturas de Venta
-2. 🔍 Verificar Estado de la API  
-3. 📁 Ver Archivos de Salida
-4. 📤 Exportar Facturas a CSV
-5. 🏢 Exportar a Business Intelligence  ⭐
-6. 📊 Estado de Resultados  ⭐ NUEVO
-7. ⚖️ Estado de Situación Financiera  ⭐ NUEVO
+📄 Licencia Activa: FREE (500 facturas máximo)
+==================================================
+1. 📋 Consultar Facturas de Venta ✅ (límite 500)
+2. 🔍 Verificar Estado de la API ✅
+3. 📁 Ver Archivos de Salida ✅
+4. 📤 Exportar Facturas a CSV ✅
+5. 🏢 Exportar a Business Intelligence ❌ (PROFESSIONAL+)
+6. 📊 Estado de Resultados ❌ (PROFESSIONAL+)
+7. ⚖️ Estado de Situación Financiera ❌ (PROFESSIONAL+)
+8. 🎫 Información de Licencia ✅
 0. 🚪 Salir
 ==================================================
 ```
 
-### **🎛️ Interfaz CLI Avanzada - Con Menús Modulares**
+### **🎛️ Interfaz CLI Avanzada - Con Control de Acceso**
 ```
-DATACONTA - Sistema de Menús Avanzado
-● Menú Principal
-● Menú de Informes Financieros  
-● Menú de Exportación BI
-● Menú de Configuración
-● Validación de Licencias Integrada
+DATACONTA - Sistema de Menús por Licencia
+┌─────────────────────────────────┐
+│ Licencia: PROFESSIONAL          │
+│ Límite: 2000 facturas          │
+│ Funciones: GUI + BI Limitado    │
+└─────────────────────────────────┘
+● Menú Principal ✅
+● Menú de Informes Financieros ✅ (PROFESSIONAL+) 
+● Menú de Exportación BI ✅ (PROFESSIONAL+ limitado)
+● Menú de Configuración ✅
+● Validación de Licencias Automática ✅
 ```
 
-## 📊 Capacidades de Exportación e Informes
+## 📊 Capacidades de Exportación e Informes según Licencia
 
-### **📈 Informes Financieros Automatizados** ⭐ NUEVO
+### **📈 Informes Financieros Automatizados** 💼 PROFESSIONAL+ 
 - **Estado de Resultados**: Ingresos, gastos, utilidad neta automáticos
 - **Estado de Situación Financiera**: Balance completo con validación contable
 - **Integración Siigo**: Extracción directa de datos contables
 - **Formato Estándar**: Compatible con normativas contables colombianas
 - **Exportación Múltiple**: CSV, PDF (próximamente), Excel (próximamente)
+- **🚫 Restricción**: Requiere licencia PROFESSIONAL o superior
 
-### **Exportación Business Intelligence** ⭐
+### **Exportación Business Intelligence** 💼 PROFESSIONAL+ con Límites
 - **Modelo estrella completo** para análisis avanzado
 - **6 archivos CSV** interconectados
 - Optimizado para **Power BI**, **Tableau**, **Excel**
 - **Métricas de procesamiento** en tiempo real
 - **Validación automática** del esquema generado
+- **🔢 Límites por Licencia**:
+  - FREE: ❌ No disponible
+  - PROFESSIONAL: ✅ Hasta 1,000 registros en tabla principal
+  - ENTERPRISE: ✅ Sin límites
 
-### **Exportación Simple CSV**
+### **Exportación Simple CSV** 🆓 Todas las Licencias
 - Facturas normalizadas en formato tabular
 - Combinaciones producto-pago por fila
 - Campos calculados automáticamente
-- Configuración de límites de registros
+- **🔢 Límites por Licencia**:
+  - FREE: ✅ Hasta 500 facturas
+  - PROFESSIONAL: ✅ Hasta 2,000 facturas
+  - ENTERPRISE: ✅ Sin límites
 
 ### **Formatos de Salida Disponibles**
 ```
@@ -344,16 +426,19 @@ flake8>=6.0.0             # Linting
 mypy>=1.5.0               # Type checking
 ```
 
-### **Configuración .env**
+### **Configuración .env con Sistema de Licencias**
 ```env
 # API de Siigo
 SIIGO_API_URL=https://api.siigo.com
 SIIGO_USERNAME=su_usuario_siigo
 SIIGO_ACCESS_KEY=su_clave_acceso
 
-# Validación de Licencia  
+# Sistema de Licencias ⭐ NUEVO
+LICENSE_TYPE=PROFESSIONAL      # FREE, PROFESSIONAL, ENTERPRISE
+LICENSE_KEY=PROF-2024-TEST-DEMO-001A
+
+# Validación de Licencia (Opcional)
 LICENSE_URL=https://servidor-licencias.com/validate
-LICENSE_KEY=XXXX-XXXX-XXXX-XXXX
 
 # Logging (Opcional)
 LOG_LEVEL=INFO
@@ -362,24 +447,47 @@ LOG_FILE=app.log
 
 ## 🏃‍♂️ Uso de la Aplicación
 
-### **🖥️ Ejecutar Interfaz Gráfica (Recomendado)**
+### **🖥️ Ejecutar Interfaz Gráfica (PROFESSIONAL+) 💼**
 ```bash
 python main_gui.py
 ```
 **Características de la GUI:**
 - ✅ Interfaz moderna y profesional con PySide6
-- ✅ Menús dinámicos configurables vía JSON
-- ✅ Informes financieros integrados
-- ✅ Validación de licencia visual
-- ✅ Navegación intuitiva por todas las funciones
+- ✅ Menús dinámicos configurables vía JSON con control de licencia
+- ✅ Informes financieros integrados (PROFESSIONAL+)
+- ✅ Validación de licencia visual en tiempo real
+- ✅ Navegación intuitiva con restricciones automáticas por licencia
+- 🚫 **Solo disponible en licencias PROFESSIONAL y ENTERPRISE**
 
-### **⌨️ Ejecutar Interfaz CLI**
+### **⌨️ Ejecutar Interfaz CLI (Todas las Licencias) 🆓💼🏢**
 ```bash
-# CLI básica completa
+# CLI básica con validación de licencia
 python main_hexagonal.py
 
-# CLI con menús avanzados
+# CLI con menús avanzados y control de acceso
 python dataconta_advanced.py
+```
+**Funciones disponibles según licencia:**
+- **FREE**: Consulta facturas (500 max), exportación CSV básica, verificación API
+- **PROFESSIONAL**: Todo lo anterior + hasta 2,000 facturas, informes financieros, BI limitado
+- **ENTERPRISE**: Sin restricciones, todas las funciones disponibles
+
+### **🎫 Verificar Estado de Licencia**
+```bash
+# Ver información detallada de licencia activa
+python main_hexagonal.py
+# Seleccionar opción: "8. 🎫 Información de Licencia"
+
+# Resultado ejemplo:
+📄 INFORMACIÓN DE LICENCIA
+════════════════════════════════════════════════
+🎫 Tipo de Licencia: PROFESSIONAL
+🔑 Clave: PROF-2024-TEST-DEMO-001A
+📊 Límite de Facturas: 2,000
+🏢️ Acceso GUI: ✅ Habilitado
+📈 Informes Financieros: ✅ Habilitado  
+🔍 Business Intelligence: ✅ Limitado (1,000 registros)
+════════════════════════════════════════════════
 ```
 
 ### **🎛️ Personalizar Menús GUI**
@@ -587,7 +695,21 @@ pytest tests/test_bi_export.py
 
 ## 📝 Registro de Cambios
 
-### **v2.1.0 - Septiembre 17, 2025** 🎉 ACTUAL
+### **v3.0.0 - Diciembre 17, 2024** 🎉 ACTUAL
+- ✅ **NUEVO**: Sistema completo de licencias de 3 niveles (FREE, PROFESSIONAL, ENTERPRISE)
+- ✅ **NUEVO**: Control de acceso automático por tipo de licencia
+- ✅ **NUEVO**: Límites dinámicos de facturas según licencia (500/2000/ilimitadas)
+- ✅ **NUEVO**: Gestión centralizada de licencias con License Manager
+- ✅ **NUEVO**: Validación automática de permisos en todos los casos de uso
+- ✅ **NUEVO**: CLI con menús adaptativos según licencia activa
+- ✅ **NUEVO**: Indicadores visuales de licencia en GUI
+- ✅ **NUEVO**: Configuración completa de licencias vía variables de entorno
+- ✅ **NUEVO**: Documentación exhaustiva del sistema de licencias
+- ✅ **MEJORA**: Arquitectura hexagonal extendida con servicios de dominio
+- ✅ **MEJORA**: Separación de responsabilidades para gestión de licencias
+- ✅ **MEJORA**: Tests unitarios actualizados para validación de licencias
+
+### **v2.1.0 - Septiembre 17, 2024**
 - ✅ **NUEVO**: Interfaz Gráfica completa con PySide6
 - ✅ **NUEVO**: Sistema de menús dinámicos configurables vía JSON
 - ✅ **NUEVO**: Integración completa de informes financieros en GUI
@@ -599,8 +721,7 @@ pytest tests/test_bi_export.py
 - ✅ **MEJORA**: Separación completa de lógica presentación/negocio
 - ✅ **MEJORA**: Sistema de logging unificado para GUI y CLI
 - ✅ **CORRECCIÓN**: Bugs corregidos en callbacks de menús PySide6
-
-### **v2.0.0 - Septiembre 14, 2025** ⭐
+### **v2.0.0 - Septiembre 14, 2024** ⭐
 - ✅ **NUEVO**: Módulo completo de Business Intelligence
 - ✅ **NUEVO**: Informes Financieros Automatizados (Estado de Resultados, Balance General)
 - ✅ **NUEVO**: Generación de modelo estrella para Power BI
@@ -636,14 +757,16 @@ Este proyecto está bajo licencia MIT. Ver `LICENSE` para más detalles.
 
 **📧 Contacto**: Desarrollado con ❤️ siguiendo principios SOLID y arquitectura limpia
 
-**📍 Estado Actual**: ✅ **Sistema completo con GUI y CLI** - Informes financieros automatizados
+**📍 Estado Actual**: ✅ **Sistema completo con GUI, CLI y licencias de 3 niveles** - Acceso controlado por tipo de licencia
 
-**🔄 Última Actualización**: Septiembre 17, 2025
+**🔄 Última Actualización**: Diciembre 17, 2024
 
 **🚀 Próximas Funcionalidades**:
 - 📄 Exportación de informes a PDF
-- 📊 Dashboard en tiempo real  
-- 🔗 API REST para integraciones
-- 📱 Responsive design mejorado
-- 🌐 Modo multi-empresa
+- 📊 Dashboard en tiempo real con métricas por licencia
+- 🔗 API REST para integraciones empresariales  
+- 📱 Responsive design mejorado en GUI
+- 🌐 Modo multi-empresa para licencias ENTERPRISE
 - 📈 Análisis predictivo con IA
+- 🔐 Sistema de autenticación multi-usuario
+- 💳 Integración con procesadores de pagos para upgrades automáticos

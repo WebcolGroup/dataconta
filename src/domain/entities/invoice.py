@@ -6,6 +6,103 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
+from enum import Enum
+
+
+# ========================================================================================
+# LICENCIA Y TIPOS DE SISTEMA
+# ========================================================================================
+
+class LicenseType(Enum):
+    """
+    Tipos de licencia disponibles en DataConta.
+    
+    FREE: Funcionalidades básicas, CLI únicamente
+    PROFESSIONAL: GUI completa, informes financieros, BI limitado  
+    ENTERPRISE: Funcionalidades completas sin límites
+    """
+    FREE = "FREE"
+    PROFESSIONAL = "PROFESSIONAL" 
+    ENTERPRISE = "ENTERPRISE"
+    
+    @property
+    def display_name(self) -> str:
+        """Nombre legible para mostrar al usuario."""
+        names = {
+            LicenseType.FREE: "🆓 Gratuita",
+            LicenseType.PROFESSIONAL: "💼 Profesional", 
+            LicenseType.ENTERPRISE: "🏢 Enterprise"
+        }
+        return names[self]
+    
+    @property
+    def max_invoices_query(self) -> int:
+        """Máximo número de facturas por consulta."""
+        limits = {
+            LicenseType.FREE: 500,
+            LicenseType.PROFESSIONAL: 2000,
+            LicenseType.ENTERPRISE: 100000  # Prácticamente ilimitado
+        }
+        return limits[self]
+    
+    @property
+    def max_invoices_bi(self) -> Optional[int]:
+        """Máximo número de facturas para exportación BI. None = sin límite."""
+        limits = {
+            LicenseType.FREE: 0,  # Sin acceso a BI
+            LicenseType.PROFESSIONAL: 2000,
+            LicenseType.ENTERPRISE: None  # Sin límite
+        }
+        return limits[self]
+    
+    @property
+    def has_gui_access(self) -> bool:
+        """Si tiene acceso a la interfaz gráfica."""
+        return self in [LicenseType.PROFESSIONAL, LicenseType.ENTERPRISE]
+    
+    @property
+    def has_financial_reports(self) -> bool:
+        """Si tiene acceso a informes financieros."""
+        return self in [LicenseType.PROFESSIONAL, LicenseType.ENTERPRISE]
+    
+    @property
+    def has_bi_export(self) -> bool:
+        """Si tiene acceso a exportación de Business Intelligence."""
+        return self in [LicenseType.PROFESSIONAL, LicenseType.ENTERPRISE]
+    
+    @property
+    def has_advanced_features(self) -> bool:
+        """Si tiene funcionalidades avanzadas (solo Enterprise)."""
+        return self == LicenseType.ENTERPRISE
+
+
+@dataclass
+class LicenseLimits:
+    """
+    Límites específicos por tipo de licencia.
+    """
+    license_type: LicenseType
+    max_invoices_per_query: int
+    max_invoices_bi: Optional[int]
+    gui_enabled: bool
+    financial_reports_enabled: bool
+    bi_export_enabled: bool
+    advanced_logging: bool
+    online_validation: bool
+    
+    @classmethod
+    def from_license_type(cls, license_type: LicenseType) -> 'LicenseLimits':
+        """Crear límites basados en el tipo de licencia."""
+        return cls(
+            license_type=license_type,
+            max_invoices_per_query=license_type.max_invoices_query,
+            max_invoices_bi=license_type.max_invoices_bi,
+            gui_enabled=license_type.has_gui_access,
+            financial_reports_enabled=license_type.has_financial_reports,
+            bi_export_enabled=license_type.has_bi_export,
+            advanced_logging=license_type != LicenseType.FREE,
+            online_validation=license_type != LicenseType.FREE
+        )
 
 
 # ========================================================================================
@@ -482,17 +579,23 @@ class Payment:
 
 @dataclass
 class License:
-    """License entity for application licensing."""
+    """License entity for application licensing with tiered support."""
     
     key: str
+    license_type: LicenseType
     status: str
     expires_at: Optional[datetime] = None
     features: Optional[List[str]] = None
+    limits: Optional[LicenseLimits] = None
     
     def __post_init__(self):
-        """Initialize default values."""
+        """Initialize default values and limits."""
         if self.features is None:
             self.features = []
+        
+        # Crear límites automáticamente basados en el tipo de licencia
+        if self.limits is None:
+            self.limits = LicenseLimits.from_license_type(self.license_type)
     
     def is_valid(self) -> bool:
         """Check if license is valid."""
@@ -507,6 +610,39 @@ class License:
     def has_feature(self, feature: str) -> bool:
         """Check if license includes a specific feature."""
         return feature in self.features
+    
+    def can_access_gui(self) -> bool:
+        """Check if license allows GUI access."""
+        return self.limits.gui_enabled if self.limits else False
+    
+    def can_generate_financial_reports(self) -> bool:
+        """Check if license allows financial reports generation."""
+        return self.limits.financial_reports_enabled if self.limits else False
+    
+    def can_export_bi(self) -> bool:
+        """Check if license allows BI export."""
+        return self.limits.bi_export_enabled if self.limits else False
+    
+    def get_max_invoices_query(self) -> int:
+        """Get maximum invoices per query for this license."""
+        return self.limits.max_invoices_per_query if self.limits else 100
+    
+    def get_max_invoices_bi(self) -> Optional[int]:
+        """Get maximum invoices for BI export. None = unlimited."""
+        return self.limits.max_invoices_bi if self.limits else 0
+    
+    def validate_invoice_count(self, count: int, operation: str = "query") -> bool:
+        """Validate if the requested invoice count is within license limits."""
+        if operation == "query":
+            return count <= self.get_max_invoices_query()
+        elif operation == "bi_export":
+            max_bi = self.get_max_invoices_bi()
+            if max_bi is None:  # Unlimited
+                return True
+            if max_bi == 0:  # No access
+                return False
+            return count <= max_bi
+        return False
 
 
 @dataclass

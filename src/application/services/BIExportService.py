@@ -11,6 +11,7 @@ from src.application.ports.interfaces import Logger
 from src.domain.entities.invoice import (
     FactInvoice, DimClient, DimSeller, DimProduct, DimPayment, DimDate
 )
+from src.domain.services.license_manager import LicenseManager
 from src.infrastructure.utils.observation_extractor import ObservationExtractor
 from src.infrastructure.utils.csv_writer import CSVWriter
 
@@ -21,11 +22,14 @@ class BIExportService:
     
     Generates fact table (invoices) and dimension tables (clients, sellers, products, 
     payments, dates) optimized for Power BI consumption.
+    
+    Now includes license validation for BI export operations.
     """
     
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, license_manager: Optional[LicenseManager] = None):
         """Initialize the BI export service."""
         self._logger = logger
+        self._license_manager = license_manager
         self._observation_extractor = ObservationExtractor(logger)
         self._csv_writer = CSVWriter(logger)
         
@@ -48,7 +52,19 @@ class BIExportService:
             Dictionary with processing results and statistics
         """
         try:
-            self._logger.info(f"Starting BI export processing for {len(invoices_data)} invoices")
+            # Validate BI export license if license manager is available
+            if self._license_manager:
+                if not self._license_manager.can_export_bi():
+                    raise ValueError(f"BI export not available for license {self._license_manager.get_license_display_name()}")
+                
+                # Validate count against BI limits
+                is_valid, error_message = self._license_manager.validate_bi_export_limit(len(invoices_data))
+                if not is_valid:
+                    raise ValueError(error_message)
+                
+                self._logger.info(f"Starting BI export processing for {len(invoices_data)} invoices (License: {self._license_manager.get_license_display_name()})")
+            else:
+                self._logger.info(f"Starting BI export processing for {len(invoices_data)} invoices")
             
             # Clear previous data
             self._clear_collections()
@@ -76,6 +92,14 @@ class BIExportService:
                 "unique_payments": len(self._payments),
                 "unique_dates": len(self._dates)
             }
+            
+            # Add license information if available
+            if self._license_manager:
+                stats["license_info"] = {
+                    "type": self._license_manager.get_license_display_name(),
+                    "can_export_bi": self._license_manager.can_export_bi(),
+                    "max_bi_invoices": self._license_manager.get_max_invoices_for_bi()
+                }
             
             self._logger.info(f"BI processing completed: {stats}")
             return stats
@@ -283,7 +307,7 @@ class BIExportService:
     
     def get_export_statistics(self) -> Dict[str, Any]:
         """Get current export statistics."""
-        return {
+        stats = {
             "facts_count": len(self._facts),
             "clients_count": len(self._clients),
             "sellers_count": len(self._sellers),
@@ -292,6 +316,17 @@ class BIExportService:
             "dates_count": len(self._dates),
             "output_directory": self._csv_writer.get_output_directory()
         }
+        
+        # Add license information if available
+        if self._license_manager:
+            stats["license_info"] = {
+                "type": self._license_manager.get_license_display_name(),
+                "can_export_bi": self._license_manager.can_export_bi(),
+                "max_bi_invoices": self._license_manager.get_max_invoices_for_bi(),
+                "bi_features_available": self._license_manager.has_feature("bi_export")
+            }
+        
+        return stats
     
     def validate_star_schema(self) -> Dict[str, Any]:
         """

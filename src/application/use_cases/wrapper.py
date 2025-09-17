@@ -13,6 +13,7 @@ from src.application.ports.interfaces import (
     InvoiceProcessor,
     CSVExporter
 )
+from src.domain.services.license_manager import LicenseManager
 
 from .invoice_use_cases import (
     GetInvoicesUseCase,
@@ -31,6 +32,7 @@ class InvoiceUseCases:
         self,
         invoice_repository: InvoiceRepository,
         license_validator: LicenseValidator,
+        license_manager: LicenseManager,
         file_storage: FileStorage,
         logger: Logger,
         user_interface: UserInterface,
@@ -38,18 +40,20 @@ class InvoiceUseCases:
         csv_exporter: CSVExporter,
         bi_export_service=None
     ):
-        # Initialize all use cases with required dependencies
+        # Initialize all use cases with required dependencies including license_manager
         self.get_invoices = GetInvoicesUseCase(
             invoice_repository=invoice_repository,
             license_validator=license_validator,
             file_storage=file_storage,
-            logger=logger
+            logger=logger,
+            license_manager=license_manager
         )
         
         self.check_api_status = CheckAPIStatusUseCase(
             invoice_repository=invoice_repository,
             license_validator=license_validator,
-            logger=logger
+            logger=logger,
+            license_manager=license_manager
         )
         
         self.view_files = ViewStoredFilesUseCase(
@@ -61,7 +65,8 @@ class InvoiceUseCases:
             invoice_processor=invoice_processor,
             csv_exporter=csv_exporter,
             license_validator=license_validator,
-            logger=logger
+            logger=logger,
+            license_manager=license_manager
         )
         
         self.export_from_api_to_csv = ExportInvoicesFromAPIToCSVUseCase(
@@ -69,12 +74,14 @@ class InvoiceUseCases:
             invoice_processor=invoice_processor,
             csv_exporter=csv_exporter,
             license_validator=license_validator,
-            logger=logger
+            logger=logger,
+            license_manager=license_manager
         )
         
         self.export_to_bi = ExportToBIUseCase(
             invoice_repository=invoice_repository,
             bi_export_service=bi_export_service,
             license_validator=license_validator,
-            logger=logger
+            logger=logger,
+            license_manager=license_manager
         )
