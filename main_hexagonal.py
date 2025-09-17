@@ -16,6 +16,7 @@ from src.infrastructure.adapters.csv_file_adapter import CSVFileAdapter
 from src.infrastructure.config.environment_config import EnvironmentConfigurationProvider
 from src.presentation.cli_interface import CLIUserInterfaceAdapter
 
+from src.domain.services.license_manager import LicenseManager
 from src.application.services.InvoiceExportService import InvoiceExportService
 from src.application.services.BIExportService import BIExportService
 from src.application.use_cases.invoice_use_cases import (
@@ -52,6 +53,9 @@ class DataContaApplication:
             self._logger.error(f"Configuration validation failed. Missing: {missing_vars}")
             raise Exception("Configuration validation failed")
         
+        # Initialize License Manager first
+        self._license_manager = LicenseManager(self._logger)
+        
         # External adapters
         self._siigo_adapter = SiigoAPIAdapter(self._logger)
         self._license_validator = LicenseValidatorAdapter(
@@ -63,11 +67,22 @@ class DataContaApplication:
             self._logger
         )
         self._csv_exporter = CSVFileAdapter(self._logger)
-        self._ui = CLIUserInterfaceAdapter(self._logger)
+        self._ui = CLIUserInterfaceAdapter(self._logger, self._license_manager)
         
         # Application services
         self._invoice_export_service = InvoiceExportService(self._logger)
-        self._bi_export_service = BIExportService(self._logger)
+        self._bi_export_service = BIExportService(self._logger, self._license_manager)
+        
+        # Validate and set license in manager
+        license_key = self._config.get_license_key()
+        license_info = self._license_validator.validate_license(license_key)
+        
+        if not license_info or not license_info.is_valid():
+            self._logger.warning("Invalid or missing license - some features will be restricted")
+            # Don't fail here, let the app run with restrictions
+        else:
+            self._license_manager.set_license(license_info)
+            self._logger.info(f"License validated successfully: {self._license_manager.get_license_display_name()}")
         
         # Authenticate with Siigo API
         credentials = self._config.get_api_credentials()
@@ -81,13 +96,15 @@ class DataContaApplication:
             self._siigo_adapter,
             self._license_validator,
             self._file_storage,
-            self._logger
+            self._logger,
+            self._license_manager
         )
         
         self._check_api_status_use_case = CheckAPIStatusUseCase(
             self._siigo_adapter,
             self._license_validator,
-            self._logger
+            self._logger,
+            self._license_manager
         )
         
         self._view_files_use_case = ViewStoredFilesUseCase(
@@ -99,7 +116,8 @@ class DataContaApplication:
             self._invoice_export_service,
             self._csv_exporter,
             self._license_validator,
-            self._logger
+            self._logger,
+            self._license_manager
         )
         
         self._export_api_to_csv_use_case = ExportInvoicesFromAPIToCSVUseCase(
@@ -107,14 +125,16 @@ class DataContaApplication:
             self._invoice_export_service,
             self._csv_exporter,
             self._license_validator,
-            self._logger
+            self._logger,
+            self._license_manager
         )
         
         self._export_to_bi_use_case = ExportToBIUseCase(
             self._siigo_adapter,
             self._bi_export_service,
             self._license_validator,
-            self._logger
+            self._logger,
+            self._license_manager
         )
     
     def run(self) -> int:
@@ -122,13 +142,15 @@ class DataContaApplication:
         try:
             self._logger.info("Starting DataConta - Siigo API Integration")
             
-            # Validate license
-            license_key = self._config.get_license_key()
-            if not self._license_validator.is_license_valid(license_key):
-                self._ui.display_message("License validation failed", "error")
-                return 1
+            # Display license status at startup
+            if self._license_manager.is_license_valid():
+                license_display = self._license_manager.get_license_display_name()
+                self._ui.display_message(f"✅ Licencia activa: {license_display}", "success")
+                self._logger.info(f"License validation successful: {license_display}")
+            else:
+                self._ui.display_message("⚠️ Sin licencia válida - funcionalidades limitadas", "warning")
+                self._logger.warning("No valid license found - running with restrictions")
             
-            self._logger.info("License validation successful")
             self._ui.display_message("¡Aplicación iniciada correctamente!", "success")
             
             # Main application loop
@@ -146,6 +168,14 @@ class DataContaApplication:
                         self._handle_export_csv()
                     elif choice == '5':
                         self._handle_export_bi()
+                    elif choice == '6':
+                        self._handle_launch_gui()
+                    elif choice == '7':
+                        self._handle_financial_reports()
+                    elif choice == '8':
+                        self._handle_license_info()
+                    elif choice == '9':
+                        self._handle_upgrade_license()
                     elif choice == '0':
                         break
                     else:
@@ -358,6 +388,69 @@ class DataContaApplication:
         except Exception as e:
             self._logger.error(f"Error exporting BI: {e}")
             self._ui.display_message(f"Error al exportar BI: {e}", "error")
+        finally:
+            self._ui.wait_for_user()
+    
+    # ========================================================================================
+    # NEW LICENSE-RELATED HANDLERS
+    # ========================================================================================
+    
+    def _handle_launch_gui(self) -> None:
+        """Handle GUI launch operation."""
+        try:
+            if not self._ui.handle_feature_restriction("gui", "Professional"):
+                return
+            
+            self._ui.display_message("🚧 Funcionalidad en desarrollo", "info")
+            self._ui.display_message("La interfaz gráfica estará disponible en la próxima versión", "info")
+            
+            # TODO: Implement GUI launch logic here
+            # from src.presentation.gui_interface import launch_gui
+            # launch_gui(self._license_manager)
+            
+        except Exception as e:
+            self._logger.error(f"Error launching GUI: {e}")
+            self._ui.display_message(f"Error al lanzar interfaz gráfica: {e}", "error")
+        finally:
+            self._ui.wait_for_user()
+    
+    def _handle_financial_reports(self) -> None:
+        """Handle financial reports generation."""
+        try:
+            if not self._ui.handle_feature_restriction("financial_reports", "Professional"):
+                return
+            
+            self._ui.display_message("📊 Generando informes financieros...", "info")
+            self._ui.display_message("🚧 Funcionalidad en desarrollo", "info")
+            self._ui.display_message("Los informes financieros estarán disponibles en la próxima versión", "info")
+            
+            # TODO: Implement financial reports logic here
+            # financial_service = FinancialReportsService(self._license_manager, self._logger)
+            # reports = financial_service.generate_reports(...)
+            
+        except Exception as e:
+            self._logger.error(f"Error generating financial reports: {e}")
+            self._ui.display_message(f"Error al generar informes financieros: {e}", "error")
+        finally:
+            self._ui.wait_for_user()
+    
+    def _handle_license_info(self) -> None:
+        """Handle display license information."""
+        try:
+            self._ui.display_license_info()
+        except Exception as e:
+            self._logger.error(f"Error displaying license info: {e}")
+            self._ui.display_message(f"Error al mostrar información de licencia: {e}", "error")
+        finally:
+            self._ui.wait_for_user()
+    
+    def _handle_upgrade_license(self) -> None:
+        """Handle upgrade license options."""
+        try:
+            self._ui.display_upgrade_options()
+        except Exception as e:
+            self._logger.error(f"Error displaying upgrade options: {e}")
+            self._ui.display_message(f"Error al mostrar opciones de actualización: {e}", "error")
         finally:
             self._ui.wait_for_user()
 

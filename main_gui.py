@@ -204,20 +204,26 @@ class DataContaGUIApplication:
             from src.application.use_cases.wrapper import InvoiceUseCases
             from src.application.services.InvoiceExportService import InvoiceExportService
             from src.application.services.BIExportService import BIExportService
+            from src.domain.services.license_manager import LicenseManager
             
-            # Crear servicios primero
+            # Crear License Manager primero
+            self.license_manager = LicenseManager(logger=self.logger_adapter)
+            
+            # Crear servicios
             self.invoice_export_service = InvoiceExportService(
                 logger=self.logger_adapter
             )
             
             self.bi_export_service = BIExportService(
+                license_manager=self.license_manager,
                 logger=self.logger_adapter
             )
             
-            # Crear casos de uso con inyección de dependencias
+            # Crear casos de uso con inyección de dependencias incluyendo license_manager
             self.invoice_use_cases = InvoiceUseCases(
                 invoice_repository=self.siigo_api,
                 license_validator=self.license_validator,
+                license_manager=self.license_manager,
                 file_storage=self.file_storage,
                 logger=self.logger_adapter,
                 user_interface=None,  # Se asignará después
@@ -890,16 +896,17 @@ class DataContaGUIApplication:
     def _update_license_display(self):
         """Actualizar display de licencia."""
         try:
-            # Verificar licencia
-            license_key = self._config.get_license_key()
-            if self.license_validator.validate_license(license_key):
-                # Por defecto mostramos Profesional ya que es la licencia activa
-                self.main_window.update_license_status("Profesional")
+            # Usar License Manager para obtener información de licencia
+            if hasattr(self, 'license_manager'):
+                license_type = self.license_manager.get_license_type()
+                display_name = self.license_manager.get_license_display_name()
+                
+                self.main_window.update_license_status(display_name)
             else:
-                self.main_window.update_license_status("FREE")
+                self.main_window.update_license_status("Gratuita")
         except Exception as e:
             self.logger.error(f"Error actualizando licencia: {e}")
-            self.main_window.update_license_status("FREE")
+            self.main_window.update_license_status("Gratuita")
     
     def run(self) -> int:
         """Ejecutar la aplicación GUI"""

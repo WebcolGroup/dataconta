@@ -17,6 +17,7 @@ from src.application.ports.interfaces import (
     CSVExporter
 )
 from src.domain.entities.invoice import Invoice, InvoiceFilter, License
+from src.domain.services.license_manager import LicenseManager
 
 
 @dataclass
@@ -44,18 +45,21 @@ class GetInvoicesUseCase:
         invoice_repository: InvoiceRepository,
         license_validator: LicenseValidator,
         file_storage: FileStorage,
-        logger: Logger
+        logger: Logger,
+        license_manager: LicenseManager
     ):
         self._invoice_repository = invoice_repository
         self._license_validator = license_validator
         self._file_storage = file_storage
         self._logger = logger
+        self._license_manager = license_manager
     
     def execute(self, request: GetInvoicesRequest, license_key: str) -> GetInvoicesResponse:
         """Execute the get invoices use case."""
         try:
-            # Validate license first
-            if not self._license_validator.is_license_valid(license_key):
+            # Validate license first and set it in the manager
+            license_info = self._license_validator.validate_license(license_key)
+            if not license_info or not license_info.is_valid():
                 self._logger.error("Invalid license for invoice retrieval")
                 return GetInvoicesResponse(
                     invoices=[],
@@ -64,6 +68,9 @@ class GetInvoicesUseCase:
                     message="License validation failed"
                 )
             
+            # Set license in manager
+            self._license_manager.set_license(license_info)
+            
             # Create filter from request
             invoice_filter = InvoiceFilter(
                 document_id=request.document_id,
@@ -71,9 +78,28 @@ class GetInvoicesUseCase:
                 created_end=self._parse_date_string(request.created_end)
             )
             
-            # Get invoices from repository
+            # Get invoices from repository with license limits
             self._logger.info("Retrieving invoices from repository")
+            max_allowed_invoices = self._license_manager.get_max_invoices_for_query()
+            
+            # Apply license limits to filter
+            if invoice_filter.page_size is None or invoice_filter.page_size > max_allowed_invoices:
+                invoice_filter.page_size = max_allowed_invoices
+                self._logger.info(f"Limited query to {max_allowed_invoices} invoices based on license {self._license_manager.get_license_display_name()}")
+            
             invoices = self._invoice_repository.get_invoices(invoice_filter)
+            
+            # Validate retrieved count against license limits
+            if invoices:
+                is_valid, error_message = self._license_manager.validate_invoice_query_limit(len(invoices))
+                if not is_valid:
+                    self._logger.warning(f"License limit validation failed: {error_message}")
+                    return GetInvoicesResponse(
+                        invoices=[],
+                        total_count=0,
+                        success=False,
+                        message=error_message
+                    )
             
             # Save results to file storage
             if invoices:
@@ -89,7 +115,7 @@ class GetInvoicesUseCase:
                 invoices=invoices,
                 total_count=len(invoices),
                 success=True,
-                message=f"Successfully retrieved {len(invoices)} invoices"
+                message=f"Successfully retrieved {len(invoices)} invoices (License: {self._license_manager.get_license_display_name()})"
             )
             
         except Exception as e:
@@ -157,33 +183,40 @@ class CheckAPIStatusUseCase:
         self,
         invoice_repository: InvoiceRepository,
         license_validator: LicenseValidator,
-        logger: Logger
+        logger: Logger,
+        license_manager: LicenseManager
     ):
         self._invoice_repository = invoice_repository
         self._license_validator = license_validator
         self._logger = logger
+        self._license_manager = license_manager
     
     def execute(self, license_key: str) -> Dict[str, Any]:
         """Execute the check API status use case."""
         try:
-            # Validate license
-            license_valid = self._license_validator.is_license_valid(license_key)
+            # Validate license and get license info
+            license_info = self._license_validator.validate_license(license_key)
+            license_valid = license_info is not None and license_info.is_valid()
             
             if not license_valid:
                 self._logger.warning("License validation failed during API status check")
                 return {
                     "api_available": False,
                     "license_valid": False,
+                    "license_type": "Invalid",
                     "message": "Invalid license"
                 }
             
+            # Set license in manager
+            self._license_manager.set_license(license_info)
+            
             # Try to connect to API by making a simple request
             try:
-                # This will test the connection
+                # This will test the connection - use conservative limit for test
                 test_filter = InvoiceFilter(page_size=1)
                 self._invoice_repository.get_invoices(test_filter)
                 api_available = True
-                message = "API is available and accessible"
+                message = f"API is available and accessible (License: {self._license_manager.get_license_display_name()})"
                 self._logger.info("API status check successful")
             except Exception as e:
                 api_available = False
@@ -193,6 +226,8 @@ class CheckAPIStatusUseCase:
             return {
                 "api_available": api_available,
                 "license_valid": license_valid,
+                "license_type": self._license_manager.get_license_display_name(),
+                "license_summary": self._license_manager.get_license_summary(),
                 "message": message
             }
             
@@ -201,6 +236,7 @@ class CheckAPIStatusUseCase:
             return {
                 "api_available": False,
                 "license_valid": False,
+                "license_type": "Error",
                 "message": f"Status check error: {str(e)}"
             }
 
@@ -319,6 +355,7 @@ class ExportInvoiceToCSVUseCase:
         csv_exporter: CSVExporter,
         license_validator: LicenseValidator,
         logger: Logger,
+        license_manager: LicenseManager,
         output_directory: str = "src/infrastructure/output"
     ):
         """Initialize the use case with required dependencies."""
@@ -326,6 +363,7 @@ class ExportInvoiceToCSVUseCase:
         self._csv_exporter = csv_exporter
         self._license_validator = license_validator
         self._logger = logger
+        self._license_manager = license_manager
         self._output_directory = output_directory
     
     def execute(
@@ -335,15 +373,22 @@ class ExportInvoiceToCSVUseCase:
     ) -> ExportInvoiceToCSVResponse:
         """Execute the export invoice to CSV use case."""
         try:
-            # Validate license first
-            if not self._license_validator.is_license_valid(license_key):
+            # Validate license first and set it in the manager
+            license_info = self._license_validator.validate_license(license_key)
+            if not license_info or not license_info.is_valid():
                 self._logger.error("Invalid license for CSV export")
                 return ExportInvoiceToCSVResponse(
                     success=False,
                     message="License validation failed"
                 )
             
-            self._logger.info("Starting invoice CSV export process")
+            # Set license in manager
+            self._license_manager.set_license(license_info)
+            
+            # NOTE: CSV export is allowed for all license types (basic export functionality)
+            # More advanced export formats (like PDF/Excel) would require higher licenses
+            
+            self._logger.info(f"Starting invoice CSV export process (License: {self._license_manager.get_license_display_name()})")
             
             # Process invoice data
             processed_rows_data = self._invoice_processor.process_invoice_for_export(
@@ -382,12 +427,13 @@ class ExportInvoiceToCSVUseCase:
             
             # Write CSV file
             if self._csv_exporter.write_csv(file_path, headers, csv_rows):
+                success_message = f"Successfully exported {len(csv_rows)} rows to {request.output_filename} (License: {self._license_manager.get_license_display_name()})"
                 self._logger.info(f"CSV export successful: {file_path} ({len(csv_rows)} rows)")
                 return ExportInvoiceToCSVResponse(
                     success=True,
                     file_path=file_path,
                     rows_exported=len(csv_rows),
-                    message=f"Successfully exported {len(csv_rows)} rows to {request.output_filename}"
+                    message=success_message
                 )
             else:
                 return ExportInvoiceToCSVResponse(
@@ -421,7 +467,8 @@ class ExportInvoicesFromAPIToCSVUseCase:
         invoice_processor: InvoiceProcessor,
         csv_exporter: CSVExporter,
         license_validator: LicenseValidator,
-        logger: Logger
+        logger: Logger,
+        license_manager: LicenseManager
     ):
         """Initialize the use case with required dependencies."""
         self._invoice_repository = invoice_repository
@@ -429,6 +476,7 @@ class ExportInvoicesFromAPIToCSVUseCase:
         self._csv_exporter = csv_exporter
         self._license_validator = license_validator
         self._logger = logger
+        self._license_manager = license_manager
     
     def execute(
         self, 
@@ -437,15 +485,35 @@ class ExportInvoicesFromAPIToCSVUseCase:
     ) -> ExportInvoiceToCSVResponse:
         """Execute the export invoices from API to CSV use case."""
         try:
-            # Validate license first
-            if not self._license_validator.is_license_valid(license_key):
+            # Validate license first and set it in the manager
+            license_info = self._license_validator.validate_license(license_key)
+            if not license_info or not license_info.is_valid():
                 self._logger.error("Invalid license for CSV export")
                 return ExportInvoiceToCSVResponse(
                     success=False,
                     message="License validation failed"
                 )
             
-            self._logger.info("Starting invoices CSV export from API")
+            # Set license in manager
+            self._license_manager.set_license(license_info)
+            
+            self._logger.info(f"Starting invoices CSV export from API (License: {self._license_manager.get_license_display_name()})")
+            
+            # Validate requested count against license limits
+            requested_count = request.max_records or 100
+            is_valid, error_message = self._license_manager.validate_invoice_query_limit(requested_count)
+            if not is_valid:
+                self._logger.warning(f"License limit validation failed: {error_message}")
+                return ExportInvoiceToCSVResponse(
+                    success=False,
+                    message=f"{error_message}. {self._license_manager.get_upgrade_message()}"
+                )
+            
+            # Apply license limits to request
+            max_allowed = self._license_manager.get_max_invoices_for_query()
+            if request.max_records > max_allowed:
+                request.max_records = max_allowed
+                self._logger.info(f"Limited export to {max_allowed} invoices based on license {self._license_manager.get_license_display_name()}")
             
             # Create invoice filter from request parameters
             from datetime import datetime
@@ -524,12 +592,13 @@ class ExportInvoicesFromAPIToCSVUseCase:
             
             # Write CSV file
             if self._csv_exporter.write_csv(request.output_filename, headers, all_csv_rows):
+                success_message = f"Successfully exported {len(all_csv_rows)} rows from {len(invoices)} invoices to {request.output_filename} (License: {self._license_manager.get_license_display_name()})"
                 self._logger.info(f"CSV export successful: {request.output_filename} ({len(all_csv_rows)} rows)")
                 return ExportInvoiceToCSVResponse(
                     success=True,
                     file_path=request.output_filename,
                     rows_exported=len(all_csv_rows),
-                    message=f"Successfully exported {len(all_csv_rows)} rows from {len(invoices)} invoices to {request.output_filename}"
+                    message=success_message
                 )
             else:
                 return ExportInvoiceToCSVResponse(
@@ -604,7 +673,7 @@ class ExportToBIUseCase:
     Use case for exporting invoices to Business Intelligence star schema format.
     
     This use case orchestrates the BI export process by:
-    1. Validating license
+    1. Validating license (requires Professional or Enterprise)
     2. Retrieving invoices from API
     3. Processing invoices through BIExportService
     4. Generating star schema CSV files
@@ -617,26 +686,56 @@ class ExportToBIUseCase:
         invoice_repository: InvoiceRepository,
         bi_export_service,  # BIExportService - avoiding circular import
         license_validator: LicenseValidator,
-        logger: Logger
+        logger: Logger,
+        license_manager: LicenseManager
     ):
         """Initialize the BI export use case with required dependencies."""
         self._invoice_repository = invoice_repository
         self._bi_export_service = bi_export_service
         self._license_validator = license_validator
         self._logger = logger
+        self._license_manager = license_manager
     
     def execute(self, request: ExportToBIRequest, license_key: str) -> ExportToBIResponse:
         """Execute the BI export use case."""
         try:
-            # Validate license first
-            if not self._license_validator.is_license_valid(license_key):
+            # Validate license first and set it in the manager
+            license_info = self._license_validator.validate_license(license_key)
+            if not license_info or not license_info.is_valid():
                 self._logger.error("Invalid license for BI export")
                 return ExportToBIResponse(
                     success=False,
                     message="License validation failed"
                 )
             
-            self._logger.info("Starting BI export process")
+            # Set license in manager
+            self._license_manager.set_license(license_info)
+            
+            # Check if BI export is allowed for this license
+            if not self._license_manager.can_export_bi():
+                self._logger.warning(f"BI export not available for license {self._license_manager.get_license_display_name()}")
+                return ExportToBIResponse(
+                    success=False,
+                    message=f"BI export requires Professional or Enterprise license. Current: {self._license_manager.get_license_display_name()}. {self._license_manager.get_upgrade_message()}"
+                )
+            
+            self._logger.info(f"Starting BI export process (License: {self._license_manager.get_license_display_name()})")
+            
+            # Validate requested count against BI license limits
+            requested_count = request.max_records or 100
+            is_valid, error_message = self._license_manager.validate_bi_export_limit(requested_count)
+            if not is_valid:
+                self._logger.warning(f"BI export license limit validation failed: {error_message}")
+                return ExportToBIResponse(
+                    success=False,
+                    message=f"{error_message}. {self._license_manager.get_upgrade_message()}"
+                )
+            
+            # Apply license limits to request
+            max_allowed_bi = self._license_manager.get_max_invoices_for_bi()
+            if max_allowed_bi is not None and request.max_records > max_allowed_bi:
+                request.max_records = max_allowed_bi
+                self._logger.info(f"Limited BI export to {max_allowed_bi} invoices based on license {self._license_manager.get_license_display_name()}")
             
             # Create invoice filter from request parameters
             from datetime import datetime
@@ -673,6 +772,14 @@ class ExportToBIUseCase:
             
             self._logger.info(f"Retrieved {len(invoices)} invoices for BI export")
             
+            # Final validation - double check against BI limits
+            final_is_valid, final_error = self._license_manager.validate_bi_export_limit(len(invoices))
+            if not final_is_valid:
+                return ExportToBIResponse(
+                    success=False,
+                    message=f"{final_error}. {self._license_manager.get_upgrade_message()}"
+                )
+            
             # Convert invoices to dictionary format for processing
             invoices_data = []
             for invoice in invoices:
@@ -693,11 +800,19 @@ class ExportToBIUseCase:
             # Get final statistics
             final_stats = self._bi_export_service.get_export_statistics()
             
+            # Add license info to statistics
+            final_stats["license_type"] = self._license_manager.get_license_display_name()
+            final_stats["license_limits"] = {
+                "max_bi_invoices": self._license_manager.get_max_invoices_for_bi(),
+                "can_export_bi": self._license_manager.can_export_bi()
+            }
+            
             # Check if all files were created successfully
             all_files_success = all(export_results.values())
             
             if all_files_success:
                 success_files = len([r for r in export_results.values() if r])
+                success_message = f"Successfully exported {processing_stats.get('processed_invoices', 0)} invoices to {success_files} BI CSV files (License: {self._license_manager.get_license_display_name()})"
                 self._logger.info(f"BI export successful: {success_files} CSV files created")
                 
                 return ExportToBIResponse(
@@ -705,7 +820,7 @@ class ExportToBIUseCase:
                     files_created=export_results,
                     statistics=final_stats,
                     validation_results=validation_results,
-                    message=f"Successfully exported {processing_stats.get('processed_invoices', 0)} invoices to {success_files} CSV files"
+                    message=success_message
                 )
             else:
                 failed_files = [filename for filename, success in export_results.items() if not success]
@@ -723,7 +838,7 @@ class ExportToBIUseCase:
             self._logger.error(f"Error in ExportToBIUseCase: {e}")
             return ExportToBIResponse(
                 success=False,
-                message=f"Export error: {str(e)}"
+                message=f"BI export error: {str(e)}"
             )
     
     def _invoice_to_dict(self, invoice: Invoice) -> Dict[str, Any]:
