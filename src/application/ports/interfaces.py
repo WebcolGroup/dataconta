@@ -7,6 +7,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from src.domain.entities.invoice import Invoice, InvoiceFilter, License, APICredentials
+from src.domain.entities.financial_reports import (
+    EstadoResultados, BalanceGeneral, CuentaContable, 
+    PeriodoFiscal, InformeFinancieroResumen
+)
 
 
 class InvoiceRepository(ABC):
@@ -215,4 +219,218 @@ class InvoiceProcessor(ABC):
         Returns:
             True if structure is valid, False otherwise
         """
+        pass
+
+
+# ========================================================================================
+# PUERTOS PARA INFORMES FINANCIEROS (Estado de Resultados y Estado de Situación Financiera)
+# ========================================================================================
+
+class EstadoResultadosRepository(ABC):
+    """Port for Estado de Resultados (P&L) data access."""
+    
+    @abstractmethod
+    def obtener_estado_resultados(self, periodo: PeriodoFiscal) -> EstadoResultados:
+        """
+        Obtener Estado de Resultados para un período específico.
+        
+        Args:
+            periodo: Período fiscal para el cual generar el informe
+            
+        Returns:
+            EstadoResultados con los datos calculados
+        """
+        pass
+    
+    @abstractmethod
+    def obtener_ventas_periodo(self, periodo: PeriodoFiscal) -> List[Dict[str, Any]]:
+        """
+        Obtener todas las ventas (facturas) del período.
+        
+        Args:
+            periodo: Período fiscal
+            
+        Returns:
+            Lista de facturas/ventas del período
+        """
+        pass
+    
+    @abstractmethod
+    def obtener_compras_periodo(self, periodo: PeriodoFiscal) -> List[Dict[str, Any]]:
+        """
+        Obtener todas las compras del período.
+        
+        Args:
+            periodo: Período fiscal
+            
+        Returns:
+            Lista de compras del período
+        """
+        pass
+    
+    @abstractmethod
+    def obtener_gastos_periodo(self, periodo: PeriodoFiscal) -> List[Dict[str, Any]]:
+        """
+        Obtener todos los gastos operativos del período.
+        
+        Args:
+            periodo: Período fiscal
+            
+        Returns:
+            Lista de gastos operativos del período
+        """
+        pass
+
+
+class BalanceGeneralRepository(ABC):
+    """Port for Estado de Situación Financiera data access."""
+    
+    @abstractmethod
+    def obtener_balance_general(self, fecha_corte: datetime) -> BalanceGeneral:
+        """
+        Obtener Balance General para una fecha de corte específica.
+        
+        Args:
+            fecha_corte: Fecha de corte para el balance
+            
+        Returns:
+            BalanceGeneral con los datos calculados
+        """
+        pass
+    
+    @abstractmethod
+    def obtener_balance_prueba(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """
+        Obtener balance de prueba para una fecha específica.
+        
+        Args:
+            fecha_corte: Fecha de corte para el balance
+            
+        Returns:
+            Lista de cuentas contables con sus saldos
+        """
+        pass
+    
+    @abstractmethod
+    def obtener_activos_corrientes(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """Obtener cuentas de activos corrientes."""
+        pass
+    
+    @abstractmethod
+    def obtener_activos_no_corrientes(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """Obtener cuentas de activos no corrientes."""
+        pass
+    
+    @abstractmethod
+    def obtener_pasivos_corrientes(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """Obtener cuentas de pasivos corrientes."""
+        pass
+    
+    @abstractmethod
+    def obtener_pasivos_no_corrientes(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """Obtener cuentas de pasivos no corrientes."""
+        pass
+    
+    @abstractmethod
+    def obtener_patrimonio(self, fecha_corte: datetime) -> List[CuentaContable]:
+        """Obtener cuentas de patrimonio."""
+        pass
+
+
+class CatalogoContableRepository(ABC):
+    """Port for chart of accounts management."""
+    
+    @abstractmethod
+    def obtener_cuenta(self, codigo_cuenta: str) -> Optional[CuentaContable]:
+        """Obtener una cuenta específica por código."""
+        pass
+    
+    @abstractmethod
+    def obtener_cuentas_por_tipo(self, tipo_cuenta: str) -> List[CuentaContable]:
+        """Obtener todas las cuentas de un tipo específico."""
+        pass
+    
+    @abstractmethod
+    def obtener_catalogo_completo(self) -> List[CuentaContable]:
+        """Obtener el catálogo completo de cuentas."""
+        pass
+
+
+class InformeFinancieroRepository(ABC):
+    """Port for comprehensive financial report generation."""
+    
+    @abstractmethod
+    def generar_informe_completo(
+        self, 
+        periodo: PeriodoFiscal, 
+        fecha_corte_balance: datetime
+    ) -> InformeFinancieroResumen:
+        """
+        Generar informe financiero completo combinando Estado de Resultados y Balance General.
+        
+        Args:
+            periodo: Período para el Estado de Resultados
+            fecha_corte_balance: Fecha de corte para el Balance General
+            
+        Returns:
+            InformeFinancieroResumen completo con ambos informes y KPIs
+        """
+        pass
+    
+    @abstractmethod
+    def validar_coherencia_informes(
+        self, 
+        estado_resultados: EstadoResultados, 
+        balance_general: BalanceGeneral
+    ) -> bool:
+        """Validar que los informes sean coherentes entre sí."""
+        pass
+
+
+class SiigoFinancialAPIClient(ABC):
+    """Port específico para consumir APIs financieras de Siigo."""
+    
+    @abstractmethod
+    def obtener_facturas_periodo(
+        self, 
+        fecha_inicio: str, 
+        fecha_fin: str,
+        page_size: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Obtener facturas de un período desde la API de Siigo."""
+        pass
+    
+    @abstractmethod
+    def obtener_notas_credito_periodo(
+        self, 
+        fecha_inicio: str, 
+        fecha_fin: str,
+        page_size: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Obtener notas de crédito de un período desde la API de Siigo."""
+        pass
+    
+    @abstractmethod
+    def obtener_compras_periodo(
+        self, 
+        fecha_inicio: str, 
+        fecha_fin: str,
+        page_size: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Obtener compras de un período desde la API de Siigo."""
+        pass
+    
+    @abstractmethod
+    def obtener_asientos_contables_periodo(
+        self, 
+        fecha_inicio: str, 
+        fecha_fin: str,
+        page_size: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Obtener asientos contables de un período desde la API de Siigo."""
+        pass
+    
+    @abstractmethod
+    def obtener_balance_prueba(self, fecha_corte: str) -> Dict[str, Any]:
+        """Obtener balance de prueba desde la API de Siigo."""
         pass
