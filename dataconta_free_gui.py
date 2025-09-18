@@ -1612,6 +1612,8 @@ sin aplicar filtros para probar la conectividad.
             nit (str): NIT del cliente  
             estado (str): Estado (abierta, cerrada, anulada)
         """
+        import pandas as pd  # Importar pandas para ExcelWriter
+        
         try:
             self.log_message("🚀 Iniciando exportación de facturas Siigo a Excel...")
             
