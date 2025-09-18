@@ -1336,7 +1336,7 @@ sin aplicar filtros para probar la conectividad.
                 self.log_message(f"❌ {error_msg}")
                 raise requests.exceptions.RequestException(error_msg)
             
-            # PASO 2: Usar el access_token para obtener facturas
+            # PASO 2: Usar el access_token para obtener facturas con paginación
             self.log_message("🔄 Descargando facturas con token válido...")
             
             # Headers para petición de facturas - CORREGIDO: usar Bearer token
@@ -1346,18 +1346,18 @@ sin aplicar filtros para probar la conectividad.
                 'Content-Type': 'application/json'
             }
             
-            # Construir parámetros de consulta
-            params = {}
+            # Construir parámetros de consulta base
+            base_params = {}
             if fecha_inicio:
-                params['created_start'] = fecha_inicio
+                base_params['created_start'] = fecha_inicio
             if fecha_fin:
-                params['created_end'] = fecha_fin
+                base_params['created_end'] = fecha_fin
             if cliente_id:
-                params['customer_id'] = cliente_id
+                base_params['customer_id'] = cliente_id
             if cc:
-                params['customer_identification'] = cc
+                base_params['customer_identification'] = cc
             if nit:
-                params['customer_identification'] = nit
+                base_params['customer_identification'] = nit
             if estado:
                 # Mapear estados a valores de API
                 estado_map = {
@@ -1365,51 +1365,97 @@ sin aplicar filtros para probar la conectividad.
                     'cerrada': 'closed', 
                     'anulada': 'cancelled'
                 }
-                params['status'] = estado_map.get(estado.lower(), estado)
+                base_params['status'] = estado_map.get(estado.lower(), estado)
             
-            # Realizar petición a API Siigo
-            url = f"{api_url}/v1/invoices"
-            self.log_message(f"📡 GET {url}")
-            self.log_message(f"🔍 Filtros: {params}")
+            # IMPLEMENTAR PAGINACIÓN COMPLETA
+            all_invoices_data = []
+            page = 1
+            page_size = 100  # Máximo por página según API Siigo
+            total_downloaded = 0
             
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            self.log_message(f"🔍 Filtros: {base_params}")
+            self.log_message(f"📄 Iniciando paginación con {page_size} facturas por página...")
             
-            if response.status_code != 200:
-                error_msg = f"Error API Siigo: {response.status_code} - {response.text}"
-                self.log_message(f"❌ {error_msg}")
-                raise requests.exceptions.RequestException(error_msg)
-            
-            # Validar y parsear respuesta JSON
-            try:
-                invoices_data = response.json()
+            while True:
+                # Preparar parámetros para esta página
+                params = base_params.copy()
+                params['page'] = page
+                params['page_size'] = page_size
                 
-                # Verificar que la respuesta es una lista
-                if not isinstance(invoices_data, list):
-                    self.log_message(f"⚠️  Respuesta no es lista. Tipo: {type(invoices_data)}")
-                    if isinstance(invoices_data, dict):
-                        # Si es un dict, buscar la lista de facturas
-                        if 'results' in invoices_data:
-                            invoices_data = invoices_data['results']
-                        elif 'data' in invoices_data:
-                            invoices_data = invoices_data['data']
-                        elif 'invoices' in invoices_data:
-                            invoices_data = invoices_data['invoices']
+                # Realizar petición a API Siigo
+                url = f"{api_url}/v1/invoices"
+                self.log_message(f"📡 GET {url} - Página {page}")
+                
+                try:
+                    response = requests.get(url, headers=headers, params=params, timeout=30)
+                    
+                    if response.status_code != 200:
+                        error_msg = f"Error API Siigo página {page}: {response.status_code} - {response.text}"
+                        self.log_message(f"❌ {error_msg}")
+                        # Si falla una página, continuar con las que ya tenemos
+                        break
+                    
+                    # Validar y parsear respuesta JSON
+                    try:
+                        response_data = response.json()
+                        page_invoices = []
+                        
+                        # Verificar estructura de respuesta (similar a arquitectura hexagonal)
+                        if isinstance(response_data, dict) and 'results' in response_data:
+                            page_invoices = response_data['results']
+                        elif isinstance(response_data, list):
+                            page_invoices = response_data
                         else:
-                            # Si hay un solo elemento, convertir a lista
-                            invoices_data = [invoices_data]
-                    else:
-                        raise ValueError(f"Respuesta inesperada de API: {type(invoices_data)}")
-                
-                self.log_message(f"✅ {len(invoices_data)} facturas descargadas exitosamente")
-                
-                # Procesar datos en DataFrames
-                encabezados_df, detalle_df = self._process_siigo_invoices(invoices_data)
-                
-            except ValueError as ve:
-                error_msg = f"Error parseando JSON de API: {ve}"
-                self.log_message(f"❌ {error_msg}")
-                self.log_message(f"📄 Respuesta raw: {response.text[:500]}...")
-                raise requests.exceptions.RequestException(error_msg)
+                            self.log_message(f"⚠️  Estructura de respuesta inesperada en página {page}")
+                            break
+                        
+                        # Validar que page_invoices sea una lista
+                        if not isinstance(page_invoices, list):
+                            self.log_message(f"⚠️  Datos de facturas no son lista en página {page}")
+                            break
+                        
+                        # Si no hay facturas en esta página, terminar
+                        if not page_invoices:
+                            self.log_message(f"📄 No hay más facturas - página {page} vacía")
+                            break
+                        
+                        # Agregar facturas de esta página al total
+                        all_invoices_data.extend(page_invoices)
+                        total_downloaded += len(page_invoices)
+                        
+                        self.log_message(f"✅ Página {page}: {len(page_invoices)} facturas descargadas (Total: {total_downloaded})")
+                        
+                        # Si esta página tiene menos facturas que el page_size, es la última página
+                        if len(page_invoices) < page_size:
+                            self.log_message(f"📄 Última página alcanzada (página {page} con {len(page_invoices)} facturas)")
+                            break
+                        
+                        # Pasar a la siguiente página
+                        page += 1
+                        
+                        # Rate limiting básico para evitar sobrecargar la API
+                        import time
+                        time.sleep(0.1)
+                        
+                    except ValueError as ve:
+                        error_msg = f"Error parseando JSON página {page}: {ve}"
+                        self.log_message(f"❌ {error_msg}")
+                        break
+                        
+                except requests.exceptions.RequestException as req_e:
+                    error_msg = f"Error de conexión página {page}: {req_e}"
+                    self.log_message(f"❌ {error_msg}")
+                    break
+            
+            # Mostrar resumen final
+            self.log_message(f"✅ {total_downloaded} facturas descargadas exitosamente en {page - 1} páginas")
+            
+            if total_downloaded == 0:
+                self.log_message("⚠️  No se encontraron facturas con los filtros especificados")
+                return pd.DataFrame(), pd.DataFrame()
+            
+            # Procesar datos en DataFrames
+            encabezados_df, detalle_df = self._process_siigo_invoices(all_invoices_data)
             
             return encabezados_df, detalle_df
             
