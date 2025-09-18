@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QTextEdit, QTabWidget, QMessageBox,
     QScrollArea, QFrame, QGroupBox, QGridLayout, QSplashScreen,
     QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
-    QDateEdit
+    QDateEdit, QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QPixmap, QColor
@@ -70,8 +70,9 @@ class DataContaFreeGUI(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
                     stop:0 #1565c0, stop:1 #1976d2);
                 border: 2px solid #0d47a1;
-                border-radius: 12px;
-                padding: 15px;
+                border-radius: 8px;
+                padding: 8px;
+                max-height: 60px;
             }
         """)
         
@@ -79,19 +80,12 @@ class DataContaFreeGUI(QMainWindow):
         
         # Logo y título FREE
         title_label = QLabel("🆓 DataConta FREE")
-        title_label.setFont(QFont("Arial", 20, QFont.Bold))
+        title_label.setFont(QFont("Arial", 16, QFont.Bold))
         title_label.setStyleSheet("color: white; font-weight: bold;")
         
-        # Información de versión FREE
-        license_info = QLabel("""
-        🎁 Versión: GRATUITA | 
-        🔢 Límite: 100 facturas | 
-        🎨 GUI: Profesional ✅ | 
-        📊 KPIs: Básicos ✅ |
-        📤 CSV: Datos Reales ✅
-        """)
-        license_info.setWordWrap(True)
-        license_info.setStyleSheet("color: white; font-weight: bold; font-size: 12px;")
+        # Información de versión FREE (compacta)
+        license_info = QLabel("🎁 GRATUITA | 🔢 100 facturas | 📊 KPIs Básicos | 📤 CSV Reales")
+        license_info.setStyleSheet("color: white; font-weight: bold; font-size: 10px;")
         
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -145,8 +139,18 @@ class DataContaFreeGUI(QMainWindow):
     
     def create_dashboard_free(self):
         """Crear dashboard FREE con KPIs básicos."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        # Widget contenedor principal con scroll
+        main_widget = QWidget()
+        
+        # Crear scroll area para hacer el dashboard responsive
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget interno con el contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # KPIs básicos para versión FREE
         kpi_group = QGroupBox("📊 KPIs Básicos - Versión FREE")
@@ -167,6 +171,8 @@ class DataContaFreeGUI(QMainWindow):
         for i, (label, value, color) in enumerate(kpis):
             kpi_frame = QFrame()
             kpi_frame.setFrameStyle(QFrame.Box)
+            kpi_frame.setMinimumWidth(200)
+            kpi_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             kpi_frame.setStyleSheet(f"""
                 QFrame {{
                     background-color: {color};
@@ -179,9 +185,11 @@ class DataContaFreeGUI(QMainWindow):
             
             label_widget = QLabel(label)
             label_widget.setStyleSheet("color: white; font-size: 12px; font-weight: bold;")
+            label_widget.setWordWrap(True)
             
             value_widget = QLabel(value)
-            value_widget.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+            value_widget.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+            value_widget.setWordWrap(True)
             
             # Guardar referencia al widget de valor para actualizarlo después
             self.kpi_widgets[kpi_names[i]] = value_widget
@@ -189,7 +197,10 @@ class DataContaFreeGUI(QMainWindow):
             kpi_layout_inner.addWidget(label_widget)
             kpi_layout_inner.addWidget(value_widget)
             
-            kpi_layout.addWidget(kpi_frame, 0, i)
+            # Distribuir KPIs en múltiples filas para mejor responsive
+            row = i // 3  # Máximo 3 KPIs por fila
+            col = i % 3
+            kpi_layout.addWidget(kpi_frame, row, col)
         
         # Botón para actualizar KPIs reales
         update_kpis_btn = QPushButton("🔄 Actualizar KPIs con Datos Reales")
@@ -269,12 +280,30 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(update_kpis_btn)
         layout.addWidget(upgrade_group)
         
-        return widget
+        # Configurar el scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Layout principal para el widget contenedor
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(scroll_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        return main_widget
     
     def create_queries_free(self):
         """Crear consulta de facturas básica."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        # Widget contenedor principal con scroll
+        main_widget = QWidget()
+        
+        # Crear scroll area para hacer el área de consultas responsive
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget interno con el contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # Filtros básicos
         filters_group = QGroupBox("🔍 Consulta de Facturas - Versión FREE")
@@ -374,12 +403,30 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(search_btn)
         layout.addWidget(results_group)
         
-        return widget
+        # Configurar el scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Layout principal para el widget contenedor
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(scroll_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        return main_widget
     
     def create_export_free(self):
         """Crear pestaña de exportación (MANTIENE FUNCIONALIDAD EXISTENTE)."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        # Widget contenedor principal con scroll
+        main_widget = QWidget()
+        
+        # Crear scroll area para hacer el área de exportación responsive
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget interno con el contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # Grupo de exportación CSV (FUNCIONALIDAD EXISTENTE PRESERVADA)
         csv_group = QGroupBox("📊 Exportación CSV - Datos Reales de Siigo API")
@@ -470,12 +517,30 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(csv_group)
         layout.addStretch()
         
-        return widget
+        # Configurar el scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Layout principal para el widget contenedor
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(scroll_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        return main_widget
     
     def create_siigo_api_tab(self):
         """Crear pestaña para descarga de facturas desde API Siigo."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        # Widget contenedor principal con scroll
+        main_widget = QWidget()
+        
+        # Crear scroll area para hacer el área de API Siigo responsive
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget interno con el contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # Grupo de configuración de filtros
         filters_group = QGroupBox("🌐 Descarga de Facturas desde API Siigo - DATOS REALES")
@@ -644,12 +709,30 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(buttons_group)
         layout.addStretch()
         
-        return widget
+        # Configurar el scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Layout principal para el widget contenedor
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(scroll_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        return main_widget
     
     def create_pro_preview_tab(self):
         """Crear preview de funciones PRO."""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        # Widget contenedor principal con scroll
+        main_widget = QWidget()
+        
+        # Crear scroll area para hacer el área PRO responsive
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget interno con el contenido
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         
         # Funciones disponibles solo en PRO
         pro_group = QGroupBox("🏆 Funcionalidades Exclusivas PRO y ENTERPRISE")
@@ -799,25 +882,51 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(pro_group)
         layout.addWidget(upgrade_group)
         
-        return widget
+        # Configurar el scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Layout principal para el widget contenedor
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(scroll_area)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        return main_widget
     
     def create_output_area(self, parent_layout):
         """Crear área de salida para logs."""
-        output_group = QGroupBox("📝 Log de Actividades del Sistema")
+        output_group = QGroupBox("📝 Log de Actividades")
+        output_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 11px;
+                font-weight: bold;
+                color: #1976d2;
+                border: 1px solid #1976d2;
+                border-radius: 4px;
+                margin-top: 8px;
+                padding-top: 5px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
         output_layout = QVBoxLayout(output_group)
         
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
-        self.output_text.setMaximumHeight(200)
+        self.output_text.setMinimumHeight(100)
+        self.output_text.setMaximumHeight(150)
+        self.output_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.output_text.setStyleSheet("""
             QTextEdit { 
                 background-color: #2c3e50; 
                 color: #ecf0f1; 
                 font-family: 'Courier New', monospace; 
-                font-size: 9pt; 
-                border: 2px solid #1976d2;
-                border-radius: 6px;
-                padding: 10px;
+                font-size: 8pt; 
+                border: 1px solid #1976d2;
+                border-radius: 4px;
+                padding: 8px;
             }
         """)
         output_layout.addWidget(self.output_text)
@@ -833,18 +942,21 @@ class DataContaFreeGUI(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
                     stop:0 #1565c0, stop:1 #1976d2);
                 border: 1px solid #0d47a1;
-                border-radius: 6px;
-                padding: 10px;
+                border-radius: 4px;
+                padding: 6px;
+                max-height: 40px;
             }
         """)
         
         footer_layout = QHBoxLayout(footer_frame)
         
         status_label = QLabel("🆓 DataConta FREE Activo | ✅ Datos reales de Siigo API")
-        status_label.setStyleSheet("font-weight: bold; color: white;")
+        status_label.setStyleSheet("font-weight: bold; color: white; font-size: 10px;")
+        status_label.setWordWrap(True)
         
         version_label = QLabel("DataConta FREE v1.0.0 | 🔄 Soporte comunitario")
-        version_label.setStyleSheet("color: white;")
+        version_label.setStyleSheet("color: white; font-size: 10px;")
+        version_label.setWordWrap(True)
         
         upgrade_btn = QPushButton("🏆 Upgrade a PRO")
         upgrade_btn.setToolTip(
