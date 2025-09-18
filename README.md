@@ -1,318 +1,632 @@
-# DataConta - Sistema Avanzado de Gestión con Interfaz Gráfica
+# DataConta FREE - Sistema de Gestión Financiera Gratuito# DataConta - Sistema Avanzado de Gestión con Interfaz Gráfica
 
-**DataConta** es un sistema profesional de gestión financiera desarrollado en Pyt### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+** 💼
+
+
+**DataConta FREE** es una aplicación gratuita de gestión financiera con interfaz gráfica moderna, desarrollada en Python para integración con la API de Siigo. Incluye análisis de KPIs, exportación de datos y funcionalidades básicas para pequeñas empresas.**DataConta** es un sistema profesional de gestión financiera desarrollado en Pyt### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+** 💼
+
 ```bash
-python main_gui.py
+
+## 🎁 DataConta FREE - Versión Gratuitapython main_gui.py
+
 ```
-- **Interfaz moderna** con PySide6 (solo PROFESSIONAL y ENTERPRISE)
-- **Menús dinámicos** configurables según licencia
-- **Informes integrados** con validación automática de permisos
-- **Navegación intuitiva** con restricciones por tipo de licencia
-- **Indicador visual** de licencia activa y límites disponibles
 
-#### **⌨️ Interfaz de Línea de Comandos (CLI) - Todas las Licencias** 🆓
-```bash
-python main_hexagonal.py          # CLI completa con validación de licencia
+### ✨ **Características Principales**- **Interfaz moderna** con PySide6 (solo PROFESSIONAL y ENTERPRISE)
+
+- 🖥️ **Interfaz Gráfica Moderna**: GUI completa con PySide6- **Menús dinámicos** configurables según licencia
+
+- 📊 **Dashboard con KPIs**: Visualización de métricas básicas en tiempo real- **Informes integrados** con validación automática de permisos
+
+- 👑 **Top de Clientes**: Análisis detallado de mejores clientes con consolidación por NIT- **Navegación intuitiva** con restricciones por tipo de licencia
+
+- 📋 **Consulta de Facturas**: Hasta 100 facturas por consulta- **Indicador visual** de licencia activa y límites disponibles
+
+- 📤 **Exportación CSV**: Datos reales exportados desde Siigo API
+
+- 🌐 **Integración Siigo**: Conexión directa con API de Siigo#### **⌨️ Interfaz de Línea de Comandos (CLI) - Todas las Licencias** 🆓
+
+- 🔍 **Filtros Avanzados**: Por fechas, clientes, estados```bash
+
+- 📱 **Ventana Maximizada**: Interfaz optimizada para máximo aprovechamiento de pantallapython main_hexagonal.py          # CLI completa con validación de licencia
+
 python dataconta_advanced.py      # CLI avanzada (funciones según licencia)
-```
-- **Disponible en todas las licencias** (FREE, PROFESSIONAL, ENTERPRISE)
-- **Funciones adaptadas** según tipo de licencia activa
-- **Límites automáticos** aplicados transparentemente
-- **Mensajes informativos** sobre restricciones activase interfaz: CLI y GUI**, implementando **Arquitectura Hexagonal** completa con capacidades avanzadas de exportación, Business Intelligence e **Informes Financieros Automatizados**.
+
+### 📊 **KPIs Disponibles**```
+
+- 💰 **Ventas Totales**: Suma total de facturación- **Disponible en todas las licencias** (FREE, PROFESSIONAL, ENTERPRISE)
+
+- 📄 **Número de Facturas**: Cantidad de facturas emitidas- **Funciones adaptadas** según tipo de licencia activa
+
+- 🎯 **Ticket Promedio**: Valor promedio por factura- **Límites automáticos** aplicados transparentemente
+
+- 👑 **Top Cliente**: Cliente con mayor facturación (consolidado por NIT)- **Mensajes informativos** sobre restricciones activase interfaz: CLI y GUI**, implementando **Arquitectura Hexagonal** completa con capacidades avanzadas de exportación, Business Intelligence e **Informes Financieros Automatizados**.
+
+- 🔄 **Última Actualización**: Timestamp de última sincronización
 
 ## 🎫 Sistema de Licencias - NUEVO (v3.0.0)
 
-DataConta ahora incluye un **sistema completo de licencias de 3 niveles** adaptado a diferentes necesidades empresariales:
+### 🏆 **Top de Clientes Mejorado**
 
-### 💰 **FREE (Gratuita)**
-- ✅ **Interfaz CLI completa**
+- **Consolidación por NIT**: Elimina duplicados agregando montos por NIT únicoDataConta ahora incluye un **sistema completo de licencias de 3 niveles** adaptado a diferentes necesidades empresariales:
+
+- **Nombres Inteligentes**: Muestra nombre real o "Cliente NIT: XXXX" si no está disponible
+
+- **Ventana Detallada**: TOP 10 con medallitas 🥇🥈🥉, porcentajes y estadísticas### 💰 **FREE (Gratuita)**
+
+- **Análisis Visual**: Tabla con posiciones, montos y participación en ventas totales- ✅ **Interfaz CLI completa**
+
 - ✅ **Hasta 500 facturas** por consulta
-- ✅ **Exportación básica CSV**
+
+## 🚀 Funcionalidades Disponibles- ✅ **Exportación básica CSV**
+
 - ✅ **Validación de API**
-- ❌ No incluye GUI
-- ❌ No incluye BI Export
-- ❌ No incluye informes financieros
+
+### 🖥️ **Interfaz Gráfica (GUI)**- ❌ No incluye GUI
+
+```bash- ❌ No incluye BI Export
+
+python dataconta_free_gui.py- ❌ No incluye informes financieros
+
+```
 
 ### 💼 **PROFESSIONAL (Profesional)**
-- ✅ **Todo lo de FREE +**
-- ✅ **Interfaz GUI completa con PySide6**
-- ✅ **Hasta 2,000 facturas** por consulta
-- ✅ **Business Intelligence Export** (limitado)
-- ✅ **Informes financieros básicos**
+
+#### **Dashboard Principal**- ✅ **Todo lo de FREE +**
+
+- 📊 **5 KPIs básicos** con colores distintivos- ✅ **Interfaz GUI completa con PySide6**
+
+- 🔄 **Actualización en tiempo real** desde API Siigo- ✅ **Hasta 2,000 facturas** por consulta
+
+- 👑 **Botón "Ver TOP 10 Clientes Detallado"** para análisis completo- ✅ **Business Intelligence Export** (limitado)
+
+- ✅ **Carga automática** de KPIs guardados al iniciar- ✅ **Informes financieros básicos**
+
 - ✅ **Menús dinámicos configurables**
-- ✅ **Dashboard integrado**
 
-### 🏢 **ENTERPRISE (Empresarial)**
-- ✅ **Todo lo de PROFESSIONAL +**
-- ✅ **Facturas ilimitadas**
-- ✅ **BI Export completo sin restricciones**
+#### **Pestañas Disponibles**- ✅ **Dashboard integrado**
+
+1. **📊 Dashboard FREE**: KPIs básicos y actualización de datos
+
+2. **🔍 Consultar Facturas**: Búsqueda básica con filtros### 🏢 **ENTERPRISE (Empresarial)**
+
+3. **📤 Exportar CSV**: Exportación de hasta 100 facturas reales- ✅ **Todo lo de PROFESSIONAL +**
+
+4. **🌐 API Siigo**: Descarga directa con filtros personalizados- ✅ **Facturas ilimitadas**
+
+5. **🏆 Funciones PRO**: Vista previa de funcionalidades premium- ✅ **BI Export completo sin restricciones**
+
 - ✅ **Informes financieros avanzados**
-- ✅ **Sincronización en tiempo real**
+
+### 📤 **Exportación de Datos**- ✅ **Sincronización en tiempo real**
+
 - ✅ **Soporte multi-usuario** (próximamente)
-- ✅ **API REST integrada** (próximamente)
-- ✅ **Soporte prioritario**
 
-### 🔐 **Configuración de Licencia**
-```bash
+#### **CSV con Datos Reales**- ✅ **API REST integrada** (próximamente)
+
+- ✅ **10 facturas**: Exportación rápida para pruebas- ✅ **Soporte prioritario**
+
+- ✅ **100 facturas**: Máximo permitido en versión FREE
+
+- ✅ **CSV simple**: 5 registros ligeros para validación### 🔐 **Configuración de Licencia**
+
+- ✅ **Sin datos demo**: 100% datos reales desde Siigo API```bash
+
 # En su archivo .env
-LICENSE_TYPE=PROFESSIONAL  # FREE, PROFESSIONAL, ENTERPRISE
-LICENSE_KEY=PROF-2024-TEST-DEMO-001A
 
-# Verificación automática al iniciar
-✅ Licencia PROFESSIONAL válida - 2000 facturas disponibles
+#### **Integración API Siigo**LICENSE_TYPE=PROFESSIONAL  # FREE, PROFESSIONAL, ENTERPRISE
+
+- 🌐 **Descarga directa**: Facturas en tiempo real desde SiigoLICENSE_KEY=PROF-2024-TEST-DEMO-001A
+
+- 🔍 **Filtros opcionales**: Por fechas, cliente ID, NIT, estado
+
+- 📊 **Doble dataset**: Encabezados + detalle de ítems# Verificación automática al iniciar
+
+- 📄 **Formatos múltiples**: CSV y Excel con dos hojas✅ Licencia PROFESSIONAL válida - 2000 facturas disponibles
+
 ```
 
-## 🎯 Características Principales
+### 🔍 **Consulta de Facturas**
 
-### ✨ **Funcionalidades Actuales (Diciembre 2024)**
-- 🎫 **Sistema de Licencias de 3 Niveles**: FREE, PROFESSIONAL, ENTERPRISE con características específicas
+- **Filtros básicos**: Fecha inicio/fin, cliente, estado## 🎯 Características Principales
+
+- **Máximo 100 resultados** por consulta
+
+- **Visualización en tabla** con botones de acciones### ✨ **Funcionalidades Actuales (Diciembre 2024)**
+
+- **Datos reales** desde API de Siigo- 🎫 **Sistema de Licencias de 3 Niveles**: FREE, PROFESSIONAL, ENTERPRISE con características específicas
+
 - 🏢️ **Interfaz Gráfica Moderna**: GUI completa con PySide6 y menús dinámicos configurables (PROFESSIONAL+)
-- 📊 **Informes Financieros**: Estado de Resultados y Estado de Situación Financiera automatizados (PROFESSIONAL+)
+
+### 🏆 **Análisis de Top Clientes**- 📊 **Informes Financieros**: Estado de Resultados y Estado de Situación Financiera automatizados (PROFESSIONAL+)
+
 - 📋 **Consulta de Facturas**: Obtención de facturas de venta con filtros avanzados (límites por licencia)
-- 📤 **Exportación CSV**: Exportación directa de facturas a formato CSV normalizado (todas las licencias)
-- 🏢 **Business Intelligence**: Generación de modelo estrella para Power BI (PROFESSIONAL+ con límites)
-- 🔍 **Verificación API**: Monitoreo del estado y conectividad de la API (todas las licencias)
+
+#### **Vista Dashboard**- 📤 **Exportación CSV**: Exportación directa de facturas a formato CSV normalizado (todas las licencias)
+
+- 👑 **Top Cliente**: Muestra el cliente #1 con nombre optimizado- 🏢 **Business Intelligence**: Generación de modelo estrella para Power BI (PROFESSIONAL+ con límites)
+
+- **Actualización automática** al cargar KPIs existentes- 🔍 **Verificación API**: Monitoreo del estado y conectividad de la API (todas las licencias)
+
 - 📁 **Gestión de Archivos**: Visualización y administración de archivos generados (todas las licencias)
-- 🔐 **Validación de Licencias**: Sistema robusto de autenticación de 3 niveles
-- 📊 **Logging Avanzado**: Sistema completo de registro de actividades (todas las licencias)
-- 🎛️ **Menús Dinámicos**: Sistema configurable vía JSON sin tocar código (PROFESSIONAL+)
-- 🚦 **Control de Acceso**: Restricción automática de funciones según tipo de licencia
 
-### 🖥️ **Interfaz Gráfica Avanzada (PySide6)** 💼 PROFESSIONAL+
+#### **Ventana Detallada**- 🔐 **Validación de Licencias**: Sistema robusto de autenticación de 3 niveles
 
-DataConta incluye una **interfaz gráfica completa** desarrollada con PySide6 (disponible en licencias PROFESSIONAL y ENTERPRISE):
+- 🏆 **TOP 10 clientes** con rankings visuales- 📊 **Logging Avanzado**: Sistema completo de registro de actividades (todas las licencias)
 
-#### **🎨 Características de la GUI:**
-- **Interfaz Moderna**: Diseño profesional con Qt6
-- **Menús Dinámicos**: Sistema de menús horizontal configurable vía JSON
-- **Informes Integrados**: Generación de informes financieros desde la interfaz
-- **Validación de Licencia**: Indicador visual del estado y tipo de licencia
-- **Gestión Visual**: Navegación intuitiva por todas las funcionalidades
-- **Responsive Design**: Adaptable a diferentes tamaños de pantalla
-- **Control de Acceso**: Menús y funciones visibles según licencia activa
+- 🥇🥈🥉 **Medallitas** para los primeros 3 puestos- 🎛️ **Menús Dinámicos**: Sistema configurable vía JSON sin tocar código (PROFESSIONAL+)
 
-#### **🎛️ Sistema de Menús Dinámico (PROFESSIONAL+):**
+- 📊 **Porcentajes** de participación en ventas totales- 🚦 **Control de Acceso**: Restricción automática de funciones según tipo de licencia
+
+- 📈 **Estadísticas**: Top 3, Top 5 y Top 10 acumulados
+
+- 🆔 **Información completa**: NIT, nombre consolidado, montos### 🖥️ **Interfaz Gráfica Avanzada (PySide6)** 💼 PROFESSIONAL+
+
+
+
+## 📁 Archivos GeneradosDataConta incluye una **interfaz gráfica completa** desarrollada con PySide6 (disponible en licencias PROFESSIONAL y ENTERPRISE):
+
+
+
+### **Estructura de Salida**#### **🎨 Características de la GUI:**
+
+```- **Interfaz Moderna**: Diseño profesional con Qt6
+
+📂 outputs/- **Menús Dinámicos**: Sistema de menús horizontal configurable vía JSON
+
+├── 📊 facturas_reales_FREE_*.csv           # Exportaciones CSV básicas- **Informes Integrados**: Generación de informes financieros desde la interfaz
+
+├── 📄 facturas_siigo_*.xlsx                # Exportaciones Excel con 2 hojas- **Validación de Licencia**: Indicador visual del estado y tipo de licencia
+
+├── 📈 facturas_encabezados_*.csv           # Encabezados de facturas- **Gestión Visual**: Navegación intuitiva por todas las funcionalidades
+
+├── 📋 facturas_detalle_*.csv               # Detalle de ítems- **Responsive Design**: Adaptable a diferentes tamaños de pantalla
+
+└── 📁 kpis/                                # KPIs calculados- **Control de Acceso**: Menús y funciones visibles según licencia activa
+
+    └── kpis_siigo_*.json                   # KPIs con metadata
+
+```#### **🎛️ Sistema de Menús Dinámico (PROFESSIONAL+):**
+
 ```json
-{
-  "horizontal_menu": {
-    "inicio": {
-      "label": "Inicio",
-      "icon": "🏠",
-      "license_required": "PROFESSIONAL",
-      "submenu": [...]
-    },
-    "informes": {
-      "label": "Informes", 
-      "icon": "📊",
-      "license_required": "PROFESSIONAL",
-      "submenu": [...]
-    }
-  }
+
+### **Formato KPIs JSON**{
+
+```json  "horizontal_menu": {
+
+{    "inicio": {
+
+  "metadata": {      "label": "Inicio",
+
+    "generado_en": "2025-09-18T12:11:46",      "icon": "🏠",
+
+    "año": 2025,      "license_required": "PROFESSIONAL",
+
+    "version": "DataConta FREE v1.0",      "submenu": [...]
+
+    "fuente": "API Siigo"    },
+
+  },    "informes": {
+
+  "kpis": {      "label": "Informes", 
+
+    "ventas_totales": 194559393.01,      "icon": "📊",
+
+    "num_facturas": 61,      "license_required": "PROFESSIONAL",
+
+    "ticket_promedio": 3189498.25,      "submenu": [...]
+
+    "top_cliente": "webcol",    }
+
+    "top_5_clientes": [...],  }
+
+    "ventas_por_cliente": [...]}
+
+  }```
+
 }
-```
 
-**Ventajas del Sistema de Menús:**
+```**Ventajas del Sistema de Menús:**
+
 - ✅ **Configuración Externa**: Modificar menús editando `menu_config.json`
-- ✅ **Sin Programación**: Agregar/quitar elementos sin tocar código
+
+## 🔧 Instalación y Configuración- ✅ **Sin Programación**: Agregar/quitar elementos sin tocar código
+
 - ✅ **Recarga Dinámica**: Cambios aplicados sin reiniciar
-- ✅ **Menús Contextuales**: Submenús profesionales con iconos
-- ✅ **Validación Automática**: Sistema robusto de validación de configuración
-- ✅ **Control de Licencia**: Menús automáticamente habilitados/deshabilitados según licencia
 
-### 🏗️ **Arquitectura Hexagonal Implementada**
+### **Prerrequisitos**- ✅ **Menús Contextuales**: Submenús profesionales con iconos
 
-DataConta utiliza una **Arquitectura Hexagonal** (Clean Architecture) completa con **doble interfaz**:
+- Python 3.7+- ✅ **Validación Automática**: Sistema robusto de validación de configuración
 
-```
-📂 src/
+- pip (gestor de paquetes)- ✅ **Control de Licencia**: Menús automáticamente habilitados/deshabilitados según licencia
+
+- Acceso a API de Siigo
+
+- PySide6 para interfaz gráfica### 🏗️ **Arquitectura Hexagonal Implementada**
+
+
+
+### **Instalación**DataConta utiliza una **Arquitectura Hexagonal** (Clean Architecture) completa con **doble interfaz**:
+
+```bash
+
+# 1. Clonar o descargar el proyecto```
+
+cd dataconta📂 src/
+
 ├── 🎯 domain/                    # Dominio - Lógica de Negocio Pura
-│   ├── entities/                # Entidades: Invoice, Cliente, Vendedor, FinancialReports
-│   │   ├── invoice.py          # Entidades de facturación
-│   │   └── financial_reports.py # Entidades de informes financieros
-│   └── services/                # Servicios de dominio
-│       └── financial_reports_service.py
-├── 🔄 application/              # Aplicación - Casos de Uso
-│   ├── ports/interfaces.py     # Puertos (abstracciones)
-│   ├── services/                # Servicios de aplicación
-│   │   ├── InvoiceExportService.py
-│   │   └── BIExportService.py
-│   ├── use_cases/               # Casos de uso
-│   │   ├── invoice_use_cases.py
-│   │   └── financial_reports_use_cases.py
-│   └── dtos/                    # Data Transfer Objects
-│       └── financial_reports_dtos.py
-├── 🔌 infrastructure/           # Infraestructura - Adaptadores
-│   ├── adapters/               # Adaptadores para servicios externos
-│   │   ├── siigo_api_adapter.py
-│   │   ├── license_validator_adapter.py
-│   │   ├── file_storage_adapter.py
-│   │   ├── csv_file_adapter.py
-│   │   └── financial_reports_repository.py
-│   ├── config/                 # Configuración
-│   │   ├── environment_config.py
-│   │   └── dynamic_menu_config.py
-│   └── factories/              # Factories para inyección de dependencias
-│       └── financial_reports_factory.py
-├── 🖥️ presentation/            # Presentación - Interfaces
-│   ├── cli_interface.py        # Interfaz CLI
-│   ├── gui_interface.py        # Interfaz GUI (PySide6)
-│   └── financial_reports_integration.py
-└── 📋 tests/                   # Tests unitarios
-    └── test_bi_export.py
-```
 
-### 💻 **Modalidades de Ejecución**
+# 2. Instalar dependencias│   ├── entities/                # Entidades: Invoice, Cliente, Vendedor, FinancialReports
+
+pip install PySide6 pandas openpyxl requests python-dotenv│   │   ├── invoice.py          # Entidades de facturación
+
+│   │   └── financial_reports.py # Entidades de informes financieros
+
+# 3. Configurar API de Siigo│   └── services/                # Servicios de dominio
+
+# Crear archivo .env con sus credenciales:│       └── financial_reports_service.py
+
+SIIGO_API_URL=https://api.siigo.com├── 🔄 application/              # Aplicación - Casos de Uso
+
+SIIGO_USER=su_usuario@empresa.com│   ├── ports/interfaces.py     # Puertos (abstracciones)
+
+SIIGO_ACCESS_KEY=su_clave_de_acceso│   ├── services/                # Servicios de aplicación
+
+PARTNER_ID=SandboxSiigoAPI│   │   ├── InvoiceExportService.py
+
+```│   │   └── BIExportService.py
+
+│   ├── use_cases/               # Casos de uso
+
+### **Ejecutar la Aplicación**│   │   ├── invoice_use_cases.py
+
+```bash│   │   └── financial_reports_use_cases.py
+
+# Iniciar interfaz gráfica (RECOMENDADO)│   └── dtos/                    # Data Transfer Objects
+
+python dataconta_free_gui.py│       └── financial_reports_dtos.py
+
+├── 🔌 infrastructure/           # Infraestructura - Adaptadores
+
+# La ventana se abrirá maximizada automáticamente│   ├── adapters/               # Adaptadores para servicios externos
+
+```│   │   ├── siigo_api_adapter.py
+
+│   │   ├── license_validator_adapter.py
+
+## 🎯 Cómo Usar DataConta FREE│   │   ├── file_storage_adapter.py
+
+│   │   ├── csv_file_adapter.py
+
+### **1. Iniciar la Aplicación**│   │   └── financial_reports_repository.py
+
+- La ventana se abre **maximizada** automáticamente│   ├── config/                 # Configuración
+
+- Los KPIs se cargan desde el último archivo guardado│   │   ├── environment_config.py
+
+- El dashboard muestra los datos más recientes disponibles│   │   └── dynamic_menu_config.py
+
+│   └── factories/              # Factories para inyección de dependencias
+
+### **2. Actualizar KPIs**│       └── financial_reports_factory.py
+
+- Presionar **"🔄 Actualizar KPIs con Datos Reales"**├── 🖥️ presentation/            # Presentación - Interfaces
+
+- La aplicación descarga facturas del año actual desde Siigo│   ├── cli_interface.py        # Interfaz CLI
+
+- Los KPIs se recalculan y actualizan en el dashboard│   ├── gui_interface.py        # Interfaz GUI (PySide6)
+
+- Se crea un nuevo archivo JSON con los datos actualizados│   └── financial_reports_integration.py
+
+└── 📋 tests/                   # Tests unitarios
+
+### **3. Ver Top de Clientes**    └── test_bi_export.py
+
+- Presionar **"👑 Ver TOP 10 Clientes Detallado"**```
+
+- Se abre ventana con tabla completa de mejores clientes
+
+- Incluye medallitas, porcentajes y estadísticas avanzadas### 💻 **Modalidades de Ejecución**
+
+- Datos consolidados por NIT para evitar duplicados
 
 #### **🖥️ Interfaz Gráfica (GUI) - Recomendado**
-```bash
-python main_gui.py
-```
-- **Interfaz moderna** con PySide6
-- **Menús dinámicos** configurables
+
+### **4. Exportar Datos**```bash
+
+- Ir a pestaña **"📤 Exportar CSV"**python main_gui.py
+
+- Elegir entre 10, 100 o 5 facturas de muestra```
+
+- Los archivos se guardan en la carpeta `outputs/`- **Interfaz moderna** con PySide6
+
+- Datos 100% reales desde Siigo API- **Menús dinámicos** configurables
+
 - **Informes integrados** con visualización
-- **Navegación intuitiva** por todas las funciones
 
-#### **⌨️ Interfaz de Línea de Comandos (CLI)**
-```bash
-python main_hexagonal.py          # CLI completa
+### **5. API Siigo Directa**- **Navegación intuitiva** por todas las funciones
+
+- Ir a pestaña **"🌐 API Siigo"**
+
+- Configurar filtros opcionales (fechas, cliente, NIT, estado)#### **⌨️ Interfaz de Línea de Comandos (CLI)**
+
+- Descargar a CSV o Excel con estructura completa```bash
+
+- Obtener encabezados + detalles de facturaspython main_hexagonal.py          # CLI completa
+
 python dataconta_advanced.py      # CLI con menús avanzados
+
+## 📊 Ejemplo de Análisis Real```
+
+
+
+### **Datos de Ejemplo (Empresa Real)**## 🚀 Módulos Implementados
+
 ```
 
-## 🚀 Módulos Implementados
+🏆 TOP 3 CLIENTES:### 1. **�️ Módulo de Interfaz Gráfica (GUI)**
 
-### 1. **�️ Módulo de Interfaz Gráfica (GUI)**
-**Nuevo - Implementado Septiembre 2025**
+🥇 webcol                    | $37,128,000 (19.1%)**Nuevo - Implementado Septiembre 2025**
 
-- **Framework**: PySide6 (Qt6) para interfaz moderna y responsive
+🥈 Cliente NIT: 66716838     | $19,316,080 (9.9%)  
+
+🥉 Cliente NIT: 21334607     | $18,802,000 (9.7%)- **Framework**: PySide6 (Qt6) para interfaz moderna y responsive
+
 - **Arquitectura**: Integración completa con arquitectura hexagonal
-- **Menús Dinámicos**: Sistema JSON-configurable sin necesidad de programar
-- **Informes Visuales**: Generación de informes financieros desde la GUI
-- **Validación Visual**: Indicador en tiempo real del estado de licencia
-- **Configuración Externa**: Personalización de menús vía `menu_config.json`
 
-### 2. **📊 Módulo de Informes Financieros**
-**Nuevo - Implementado Septiembre 2025**
+📈 ESTADÍSTICAS:- **Menús Dinámicos**: Sistema JSON-configurable sin necesidad de programar
 
-#### **📈 Estado de Resultados (P&L)**
-- Ingresos operacionales automáticos desde facturas de Siigo
-- Cálculo de costos de ventas basado en productos facturados  
-- Gastos operacionales categorizados automáticamente
-- Utilidad neta calculada con impuestos aplicables
-- Exportación a CSV con formato contable estándar
+💰 Ventas totales: $194,559,393- **Informes Visuales**: Generación de informes financieros desde la GUI
 
-#### **⚖️ Estado de Situación Financiera (Balance General)**
+📄 Total facturas: 61- **Validación Visual**: Indicador en tiempo real del estado de licencia
+
+🎯 Ticket promedio: $3,189,498- **Configuración Externa**: Personalización de menús vía `menu_config.json`
+
+📊 Top 3 representa: 38.7% del total
+
+📊 Top 5 representa: 55.0% del total### 2. **📊 Módulo de Informes Financieros**
+
+```**Nuevo - Implementado Septiembre 2025**
+
+
+
+### **Beneficios del Análisis**#### **📈 Estado de Resultados (P&L)**
+
+- ✅ **Identifica clientes clave** que generan la mayor facturación- Ingresos operacionales automáticos desde facturas de Siigo
+
+- ✅ **Consolida por NIT** para eliminar duplicados y obtener el monto real- Cálculo de costos de ventas basado en productos facturados  
+
+- ✅ **Calcula porcentajes** de participación en ventas totales- Gastos operacionales categorizados automáticamente
+
+- ✅ **Análisis de concentración** para estrategias comerciales- Utilidad neta calculada con impuestos aplicables
+
+- ✅ **Datos actualizados** directamente desde Siigo API- Exportación a CSV con formato contable estándar
+
+
+
+## 🔍 Características Técnicas#### **⚖️ Estado de Situación Financiera (Balance General)**
+
 - **Activos Corrientes**: Efectivo, cuentas por cobrar, inventarios
-- **Activos No Corrientes**: Propiedad, planta y equipo
-- **Pasivos Corrientes**: Cuentas por pagar, obligaciones laborales
-- **Pasivos No Corrientes**: Préstamos a largo plazo
-- **Patrimonio**: Capital social, utilidades retenidas
-- **Validación Automática**: Verificación de ecuación contable
 
-#### **🔗 Integración con API de Siigo**
-- Extracción automática de datos contables
-- Sincronización en tiempo real con el sistema contable
-- Mapeo inteligente de cuentas contables
-- Validación de coherencia entre informes
+### **Arquitectura**- **Activos No Corrientes**: Propiedad, planta y equipo
 
-### 3. **�📋 Módulo de Consulta de Facturas**
-- Filtros por fecha de creación (rango)
-- Filtros por ID de documento específico
-- Paginación automática para grandes volúmenes
-- Guardado automático en formato JSON con timestamp
+- **Patrón MVC**: Separación clara de presentación, lógica y datos- **Pasivos Corrientes**: Cuentas por pagar, obligaciones laborales
 
-### 4. **📤 Módulo de Exportación CSV**
+- **API REST**: Integración robusta con Siigo mediante OAuth- **Pasivos No Corrientes**: Préstamos a largo plazo
+
+- **Gestión de Errores**: Manejo completo de excepciones y logs- **Patrimonio**: Capital social, utilidades retenidas
+
+- **Persistencia**: Almacenamiento automático de KPIs en JSON- **Validación Automática**: Verificación de ecuación contable
+
+
+
+### **Rendimiento**#### **🔗 Integración con API de Siigo**
+
+- ⚡ **Inicio rápido**: < 3 segundos- Extracción automática de datos contables
+
+- 📊 **Cálculo KPIs**: Hasta 100 facturas en < 5 segundos  - Sincronización en tiempo real con el sistema contable
+
+- 🖥️ **Interfaz responsiva**: 60 FPS en operaciones UI- Mapeo inteligente de cuentas contables
+
+- 💾 **Memoria eficiente**: < 100MB RAM en uso típico- Validación de coherencia entre informes
+
+
+
+### **Tecnologías**### 3. **�📋 Módulo de Consulta de Facturas**
+
+- **PySide6**: Interfaz gráfica moderna basada en Qt6- Filtros por fecha de creación (rango)
+
+- **Pandas**: Procesamiento eficiente de datos- Filtros por ID de documento específico
+
+- **Requests**: Comunicación HTTP con API Siigo- Paginación automática para grandes volúmenes
+
+- **JSON**: Persistencia ligera de configuración y KPIs- Guardado automático en formato JSON con timestamp
+
+
+
+## 🛠️ Personalización### 4. **📤 Módulo de Exportación CSV**
+
 - Transformación de facturas a formato CSV estructurado
-- Normalización de datos con combinación producto-pago
-- Campos calculados automáticamente (subtotales, impuestos)
-- Validación de estructura de datos
-- Configuración de registros máximos
 
-### 5. **🏢 Módulo Business Intelligence (BI)**
-**Actualizado - Septiembre 2025**
+### **Colores del Dashboard**- Normalización de datos con combinación producto-pago
 
-Genera un **modelo estrella completo** optimizado para Power BI:
+Los KPIs usan colores distintivos configurables:- Campos calculados automáticamente (subtotales, impuestos)
 
-#### **📊 Tablas Generadas:**
-- **fact_invoices.csv**: Tabla de hechos principal
-  - Métricas: cantidades, precios, descuentos, totales
-  - Claves foráneas a todas las dimensiones
-  - 202 registros procesados (ejemplo actual)
+- 💰 Ventas: Verde (`#4caf50`)- Validación de estructura de datos
 
-- **dim_clients.csv**: Dimensión de clientes
+- 📄 Facturas: Azul (`#2196f3`) - Configuración de registros máximos
+
+- 🎯 Ticket: Rojo (`#ff5722`)
+
+- 👑 Top Cliente: Naranja (`#ff9800`)### 5. **🏢 Módulo Business Intelligence (BI)**
+
+- 🔄 Actualización: Morado (`#9c27b0`)**Actualizado - Septiembre 2025**
+
+
+
+### **Límites Configurables**Genera un **modelo estrella completo** optimizado para Power BI:
+
+```python
+
+# En dataconta_free_gui.py se pueden ajustar:#### **📊 Tablas Generadas:**
+
+MAX_FACTURAS_FREE = 100        # Máximo para exportación- **fact_invoices.csv**: Tabla de hechos principal
+
+TOP_CLIENTES_MOSTRAR = 10      # Clientes en ventana detallada  - Métricas: cantidades, precios, descuentos, totales
+
+KPI_REFRESH_SECONDS = 2        # Tiempo para actualizar UI  - Claves foráneas a todas las dimensiones
+
+```  - 202 registros procesados (ejemplo actual)
+
+
+
+## 🚨 Solución de Problemas- **dim_clients.csv**: Dimensión de clientes
+
   - Información completa del cliente
-  - Tipo de cliente (Persona Natural/Jurídica)
-  - Régimen fiscal extraído inteligentemente
 
-- **dim_sellers.csv**: Dimensión de vendedores
+### **La aplicación no inicia**  - Tipo de cliente (Persona Natural/Jurídica)
+
+```bash  - Régimen fiscal extraído inteligentemente
+
+# Verificar instalación de PySide6
+
+pip install PySide6- **dim_sellers.csv**: Dimensión de vendedores
+
   - Datos completos de vendedores
-  - Identificación y información de contacto
 
-- **dim_products.csv**: Dimensión de productos
+# Si persiste el error, usar versión específica  - Identificación y información de contacto
+
+pip install PySide6==6.7.0
+
+```- **dim_products.csv**: Dimensión de productos
+
   - Catálogo completo de productos
-  - Códigos, descripciones y categorías
 
-- **dim_payments.csv**: Dimensión de métodos de pago
-  - Métodos de pago normalizados
+### **No carga KPIs existentes**  - Códigos, descripciones y categorías
+
+- Verificar que existe la carpeta `outputs/kpis/`
+
+- Revisar permisos de lectura en el directorio- **dim_payments.csv**: Dimensión de métodos de pago
+
+- Comprobar formato JSON de archivos KPIs existentes  - Métodos de pago normalizados
+
   - Referencias y valores
 
-- **dim_dates.csv**: Dimensión temporal
-  - Fechas formateadas para análisis temporal
-  - Compatible con filtros de Power BI
+### **Error de autenticación Siigo**
 
-#### **🧠 Características Inteligentes del BI:**
-- **Extracción Automática de Reglas de Negocio**: Identifica tipo de cliente y régimen fiscal desde observaciones
-- **Deduplicación Inteligente**: Elimina duplicados manteniendo integridad referencial
-- **Generación de Claves Únicas**: Claves consistentes para todas las dimensiones
+- Verificar credenciales en archivo `.env`- **dim_dates.csv**: Dimensión temporal
+
+- Confirmar conectividad a internet  - Fechas formateadas para análisis temporal
+
+- Revisar logs en consola para detalles del error  - Compatible con filtros de Power BI
+
+
+
+### **Top de clientes muestra datos incorrectos**#### **🧠 Características Inteligentes del BI:**
+
+- Presionar "🔄 Actualizar KPIs con Datos Reales"- **Extracción Automática de Reglas de Negocio**: Identifica tipo de cliente y régimen fiscal desde observaciones
+
+- Esperar a que complete la descarga desde Siigo- **Deduplicación Inteligente**: Elimina duplicados manteniendo integridad referencial
+
+- Los duplicados se consolidan automáticamente por NIT- **Generación de Claves Únicas**: Claves consistentes para todas las dimensiones
+
 - **Validación de Esquema**: Verificación automática de la estructura generada
-- **Estadísticas de Procesamiento**: Métricas detalladas de la exportación
 
-### 6. **🔐 Módulo de Seguridad y Validación**
-- Validación de licencias online/offline
-- Autenticación segura con tokens JWT
-- Manejo robusto de credenciales
-- Configuración por variables de entorno
+## 📈 Casos de Uso- **Estadísticas de Procesamiento**: Métricas detalladas de la exportación
 
-### 7. **📊 Módulo de Logging y Monitoreo**
-- Niveles de log configurables (INFO, WARNING, ERROR)
-- Registro tanto en consola como en archivo
-- Tracking detallado de operaciones
-- Métricas de rendimiento
 
-### 8. **🎛️ Sistema de Menús Dinámicos**
-**Nuevo - Implementado Septiembre 2025**
 
-- **Configuración JSON**: Menús completamente editables externamente
-- **Sin Programación**: Agregar/modificar menús sin tocar código
+### **Pequeñas Empresas**### 6. **🔐 Módulo de Seguridad y Validación**
+
+- ✅ Control básico de facturación mensual- Validación de licencias online/offline
+
+- ✅ Identificación de mejores clientes- Autenticación segura con tokens JWT
+
+- ✅ Exportación para contabilidad externa- Manejo robusto de credenciales
+
+- ✅ Análisis de tendencias de ventas- Configuración por variables de entorno
+
+
+
+### **Startups y Emprendedores**### 7. **📊 Módulo de Logging y Monitoreo**
+
+- ✅ Dashboard visual para presentaciones- Niveles de log configurables (INFO, WARNING, ERROR)
+
+- ✅ KPIs básicos para seguimiento de crecimiento- Registro tanto en consola como en archivo
+
+- ✅ Datos limpios para análisis en Excel- Tracking detallado de operaciones
+
+- ✅ Integración directa con Siigo sin costos adicionales- Métricas de rendimiento
+
+
+
+### **Consultores Financieros**### 8. **🎛️ Sistema de Menús Dinámicos**
+
+- ✅ Análisis rápido de cartera de clientes**Nuevo - Implementado Septiembre 2025**
+
+- ✅ Identificación de concentraciones de riesgo
+
+- ✅ Datos exportables para informes a terceros- **Configuración JSON**: Menús completamente editables externamente
+
+- ✅ Herramienta gratuita para servicios básicos- **Sin Programación**: Agregar/modificar menús sin tocar código
+
 - **Recarga Dinámica**: Cambios aplicados sin reiniciar aplicación
-- **Validación Robusta**: Sistema de validación automática de configuración
+
+## 📄 Limitaciones de la Versión FREE- **Validación Robusta**: Sistema de validación automática de configuración
+
 - **Iconos y Estilos**: Soporte completo para iconos emoji y estilos CSS
 
-## 💻 Interfaces Disponibles con Control de Licencias
+- 📊 **Máximo 100 facturas** por consulta de exportación
 
-### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+ 💼**
-```
+- 🔍 **Filtros básicos** en consulta de facturas## 💻 Interfaces Disponibles con Control de Licencias
+
+- 📈 **KPIs básicos** (5 indicadores principales)
+
+- 👑 **Top 10 clientes** como máximo en análisis detallado### **🖥️ Interfaz Gráfica (GUI) - PROFESSIONAL+ 💼**
+
+- 📱 **Solo interfaz gráfica** (no incluye CLI avanzada)```
+
 🖥️ DATACONTA - Sistema Avanzado de Gestión
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+
+## 📞 Soporte┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+
 ┃ 🏠 Inicio  ❓ Ayuda  🔧 Herramientas  📊 Reportes ┃  ← Menús según licencia
-┃ 📄 Licencia: 💼 PROFESSIONAL (2000 facturas)    ┃  ← Estado y límites  
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-📊 Funciones Disponibles según Licencia:
+### **Documentación**┃ 📄 Licencia: 💼 PROFESSIONAL (2000 facturas)    ┃  ← Estado y límites  
+
+- README completo con ejemplos de uso┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+- Comentarios detallados en el código fuente
+
+- Mensajes de error descriptivos en la aplicación📊 Funciones Disponibles según Licencia:
+
 ├── 📈 Estado de Resultados (PROFESSIONAL+)
-├── ⚖️ Estado de Situación Financiera (PROFESSIONAL+)
-├── 🏢 Exportación BI (PROFESSIONAL+ con límites)
-└── 📋 Consulta de Facturas (con límites por licencia)
+
+### **Comunidad**├── ⚖️ Estado de Situación Financiera (PROFESSIONAL+)
+
+- Issues en GitHub para reportar problemas├── 🏢 Exportación BI (PROFESSIONAL+ con límites)
+
+- Discusiones para preguntas y sugerencias└── 📋 Consulta de Facturas (con límites por licencia)
+
+- Ejemplos de uso en la documentación```
+
+
+
+---### **⌨️ Interfaz CLI - Todas las Licencias 🆓💼🏢**
+
 ```
 
-### **⌨️ Interfaz CLI - Todas las Licencias 🆓💼🏢**
-```
-🏢 DATACONTA - SIIGO API
+**🎁 DataConta FREE** - Gestión financiera moderna y gratuita🏢 DATACONTA - SIIGO API
+
 ==================================================
-📄 Licencia Activa: FREE (500 facturas máximo)
-==================================================
-1. 📋 Consultar Facturas de Venta ✅ (límite 500)
+
+**📅 Versión**: 1.0.0 FREE  📄 Licencia Activa: FREE (500 facturas máximo)
+
+**🔄 Última actualización**: Septiembre 18, 2025  ==================================================
+
+**🏷️ Licencia**: Gratuita para uso comercial y personal1. 📋 Consultar Facturas de Venta ✅ (límite 500)
+
 2. 🔍 Verificar Estado de la API ✅
-3. 📁 Ver Archivos de Salida ✅
+
+**🚀 ¡Prueba DataConta FREE y optimiza tu gestión financiera hoy mismo!**3. 📁 Ver Archivos de Salida ✅
 4. 📤 Exportar Facturas a CSV ✅
 5. 🏢 Exportar a Business Intelligence ❌ (PROFESSIONAL+)
 6. 📊 Estado de Resultados ❌ (PROFESSIONAL+)

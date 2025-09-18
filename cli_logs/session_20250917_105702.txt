@@ -1,0 +1,2 @@
+[2025-09-17 10:57:02] [INFO] Acción usuario: CLI Startup - Usuario inició CLI FREE | user_action=CLI Startup | details=Usuario inició CLI FREE
+[2025-09-17 11:15:33] [INFO] Acción usuario: CLI Exit - Usuario cerró la aplicación | user_action=CLI Exit | details=Usuario cerró la aplicación

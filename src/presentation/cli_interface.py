@@ -168,6 +168,13 @@ class CLIUserInterfaceAdapter(UserInterface):
         print("3. 📁 Ver Archivos de Salida")
         print("4. 📤 Exportar Facturas a CSV")
         
+        # New JSON export option (available for FREE license)
+        if self._license_manager and self._license_manager.is_license_valid():
+            max_json_records = self._license_manager.get_max_invoices_for_query()
+            print(f"5. 📄 Exportar Facturas a JSON (hasta {max_json_records:,} registros)")
+        else:
+            print("5. 📄 Exportar Facturas a JSON (❌ Requiere licencia)")
+        
         # Show BI export only if license allows it
         if self._license_manager and self._license_manager.can_export_bi():
             bi_limit = self._license_manager.get_max_invoices_for_bi()
@@ -175,25 +182,27 @@ class CLIUserInterfaceAdapter(UserInterface):
                 bi_note = "Ilimitado"
             else:
                 bi_note = f"hasta {bi_limit:,} facturas"
-            print(f"5. 🏢 Exportar a Business Intelligence ({bi_note})")
+            print(f"6. 🏢 Exportar a Business Intelligence ({bi_note})")
         else:
-            print("5. 🏢 Exportar a Business Intelligence (❌ Requiere Professional+)")
+            print("6. 🏢 Exportar a Business Intelligence (❌ Requiere Professional+)")
         
         # Show GUI launch only if license allows it
         if self._license_manager and self._license_manager.can_access_gui():
-            print("6. 🖥️ Abrir Interfaz Gráfica")
+            print("7. 🖥️ Abrir Interfaz Gráfica")
+        elif self._license_manager and self._license_manager.can_access_gui_lite():
+            print("7. 🖥️ Abrir Interfaz Gráfica Lite (FREE)")
         else:
-            print("6. 🖥️ Abrir Interfaz Gráfica (❌ Requiere Professional+)")
+            print("7. 🖥️ Abrir Interfaz Gráfica (❌ Requiere Professional+)")
         
         # Show financial reports if available
         if self._license_manager and self._license_manager.can_generate_financial_reports():
-            print("7. 📊 Generar Informes Financieros")
+            print("8. 📊 Generar Informes Financieros")
         else:
-            print("7. 📊 Generar Informes Financieros (❌ Requiere Professional+)")
+            print("8. 📊 Generar Informes Financieros (❌ Requiere Professional+)")
         
         # Always show license info and upgrade options
-        print("8. ℹ️ Información de Licencia")
-        print("9. ⬆️ Actualizar Licencia")
+        print("9. ℹ️ Información de Licencia")
+        print("10. ⬆️ Actualizar Licencia")
         print("0. 🚪 Salir")
         print("="*60)
         
@@ -266,6 +275,79 @@ class CLIUserInterfaceAdapter(UserInterface):
             self._logger.error(f"Error getting export parameters: {e}")
             return None
     
+    def get_json_export_parameters(self) -> Optional[dict]:
+        """
+        Get parameters for JSON export (available for FREE license).
+        
+        Returns:
+            Dictionary with JSON export parameters or None if cancelled
+        """
+        try:
+            print("\n📄 Exportar Facturas a JSON")
+            print("-" * 30)
+            
+            # Show license information and limits
+            if self._license_manager and self._license_manager.is_license_valid():
+                license_type = self._license_manager.get_license_display_name()
+                max_records = self._license_manager.get_max_invoices_for_query()
+                print(f"📝 Licencia {license_type}: Máximo {max_records:,} facturas por consulta")
+                
+                if self._license_manager.get_license_type() == "FREE":
+                    print("🆓 Exportación JSON disponible en licencia gratuita")
+                    print("📊 Incluye: metadatos, resumen estadístico y validación")
+            else:
+                print("❌ Se requiere licencia válida para exportación JSON")
+                return None
+            
+            print()
+            
+            # Get date range
+            print("📅 Rango de fechas (opcional):")
+            start_date = self._get_optional_input("Fecha de inicio (YYYY-MM-DD) [Enter para omitir]: ")
+            end_date = self._get_optional_input("Fecha de fin (YYYY-MM-DD) [Enter para omitir]: ")
+            
+            # Get max records with license validation
+            max_records_input = self._get_optional_input("Máximo número de registros [Enter para 100]: ")
+            try:
+                max_records = int(max_records_input) if max_records_input else 100
+            except ValueError:
+                max_records = 100
+            
+            # Validate against license limits
+            if self._license_manager and self._license_manager.is_license_valid():
+                max_allowed = self._license_manager.get_max_invoices_for_query()
+                if max_records > max_allowed:
+                    print(f"⚠️ Ajustando a límite de licencia: {max_allowed:,} registros")
+                    max_records = max_allowed
+            
+            # Get custom filename
+            custom_filename = self._get_optional_input("Nombre del archivo JSON [Enter para automático]: ")
+            
+            # Summary of export parameters
+            print(f"\n📋 Resumen de exportación JSON:")
+            print(f"   📅 Fechas: {start_date or 'Sin límite'} - {end_date or 'Sin límite'}")
+            print(f"   📊 Máximo registros: {max_records:,}")
+            print(f"   📄 Archivo: {custom_filename or 'Automático con timestamp'}")
+            print(f"   ✨ Incluye metadatos y estadísticas: Sí")
+            
+            # Confirm export
+            confirm = input("\n¿Proceder con la exportación JSON? (S/n): ").strip()
+            if confirm and confirm.lower().startswith('n'):
+                return None
+            
+            return {
+                "start_date": start_date,
+                "end_date": end_date,
+                "max_records": max_records,
+                "custom_filename": custom_filename
+            }
+            
+        except KeyboardInterrupt:
+            return None
+        except Exception as e:
+            self._logger.error(f"Error getting JSON export parameters: {e}")
+            return None
+
     def get_bi_export_parameters(self) -> Optional[dict]:
         """
         Get parameters for Business Intelligence export.

@@ -889,4 +889,184 @@ class ExportToBIUseCase:
             },
             "status": "Open",
             "observations": invoice.observations or ""
+        } 
+ 
+# ================================================================================================
+# EXPORT INVOICES TO JSON USE CASE (For FREE license)
+# ================================================================================================
+
+@dataclass
+class ExportInvoicesToJSONRequest:
+    """Request object for exporting invoices to JSON."""
+    start_date: str = None
+    end_date: str = None
+    max_records: int = 100
+    custom_filename: str = None
+
+
+@dataclass
+class ExportInvoicesToJSONResponse:
+    """Response object for JSON export operation."""
+    success: bool
+    message: str
+    filename: str = None
+    exported_count: int = 0
+    summary_stats: Dict[str, Any] = None
+
+
+class ExportInvoicesToJSONUseCase:
+    """Use case for exporting invoices to structured JSON (FREE license feature)."""
+    
+    def __init__(
+        self,
+        invoice_repository: InvoiceRepository,
+        file_storage: FileStorage,
+        logger: Logger,
+        license_manager: LicenseManager
+    ):
+        self._invoice_repository = invoice_repository
+        self._file_storage = file_storage
+        self._logger = logger
+        self._license_manager = license_manager
+    
+    def execute(self, request: ExportInvoicesToJSONRequest, license_key: str) -> ExportInvoicesToJSONResponse:
+        """Execute the JSON export use case."""
+        try:
+            # Validate license and apply limits
+            if not self._license_manager.validate_invoice_query_limit(request.max_records):
+                max_allowed = self._license_manager.get_max_invoices_for_query()
+                return ExportInvoicesToJSONResponse(
+                    success=False,
+                    message=f"Límite excedido. Licencia {self._license_manager.get_license_display_name()} permite máximo {max_allowed} facturas por consulta."
+                )
+            
+            # Create invoice filter
+            invoice_filter = InvoiceFilter(
+                document_id=None,
+                created_start=request.start_date,
+                created_end=request.end_date
+            )
+            
+            # Fetch invoices from repository
+            self._logger.info(f"Fetching invoices for JSON export with filter: {invoice_filter}")
+            invoices = self._invoice_repository.get_invoices(invoice_filter, request.max_records)
+            
+            if not invoices:
+                return ExportInvoicesToJSONResponse(
+                    success=False,
+                    message="No se encontraron facturas para exportar"
+                )
+            
+            # Create structured JSON data
+            json_data = self._create_structured_json(invoices)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if request.custom_filename:
+                filename = f"{request.custom_filename}_{timestamp}.json"
+            else:
+                filename = f"invoices_export_{len(invoices)}_items_{timestamp}.json"
+            
+            # Save JSON file
+            import json
+            json_content = json.dumps(json_data, indent=2, ensure_ascii=False, default=str)
+            saved_path = self._file_storage.save_file(filename, json_content)
+            
+            # Calculate summary statistics
+            summary_stats = self._calculate_summary_stats(invoices)
+            
+            self._logger.info(f"JSON export completed successfully: {filename}")
+            
+            return ExportInvoicesToJSONResponse(
+                success=True,
+                message=f"Exportación JSON completada exitosamente",
+                filename=saved_path,
+                exported_count=len(invoices),
+                summary_stats=summary_stats
+            )
+            
+        except Exception as e:
+            error_msg = f"Error during JSON export: {str(e)}"
+            self._logger.error(error_msg)
+            return ExportInvoicesToJSONResponse(
+                success=False,
+                message=error_msg
+            )
+    
+    def _create_structured_json(self, invoices: List[Invoice]) -> Dict[str, Any]:
+        """Create structured JSON from invoices list."""
+        return {
+            "export_info": {
+                "generated_at": datetime.now().isoformat(),
+                "total_invoices": len(invoices),
+                "license_type": self._license_manager.get_license_display_name(),
+                "version": "DataConta v3.0.0",
+                "format_version": "1.0"
+            },
+            "invoices": [self._convert_invoice_to_dict(invoice) for invoice in invoices],
+            "summary": self._calculate_summary_stats(invoices)
+        }
+    
+    def _convert_invoice_to_dict(self, invoice: Invoice) -> Dict[str, Any]:
+        """Convert a single invoice to dictionary format."""
+        return {
+            "id": invoice.id,
+            "number": invoice.number,
+            "date": invoice.date.isoformat() if invoice.date else None,
+            "customer": {
+                "identification": invoice.customer.identification if invoice.customer else None,
+                "name": " ".join(invoice.customer.name) if invoice.customer and invoice.customer.name else None,
+                "customer_type": "Unknown"
+            },
+            "seller": {
+                "id": invoice.seller,
+                "name": f"Seller_{invoice.seller}" if invoice.seller else "Default"
+            },
+            "items": [
+                {
+                    "code": item.code,
+                    "description": item.description,
+                    "quantity": float(item.quantity),
+                    "unit_price": float(item.price),
+                    "discount": float(item.discount),
+                    "subtotal": float(item.calculate_total())
+                }
+                for item in invoice.items
+            ] if invoice.items else [],
+            "payments": [
+                {
+                    "method_id": payment.id,
+                    "amount": float(payment.value)
+                }
+                for payment in (invoice.payments or [])
+            ],
+            "totals": {
+                "subtotal": float(invoice.calculate_total()) if invoice.items else 0,
+                "total": float(invoice.total) if invoice.total else float(invoice.calculate_total()) if invoice.items else 0
+            },
+            "observations": invoice.observations or ""
+        }
+    
+    def _calculate_summary_stats(self, invoices: List[Invoice]) -> Dict[str, Any]:
+        """Calculate summary statistics for the export."""
+        total_amount = sum(
+            float(invoice.total) if invoice.total else float(invoice.calculate_total()) if invoice.items else 0
+            for invoice in invoices
+        )
+        
+        unique_customers = set()
+        total_items = 0
+        
+        for invoice in invoices:
+            if invoice.customer and invoice.customer.identification:
+                unique_customers.add(invoice.customer.identification)
+            if invoice.items:
+                total_items += len(invoice.items)
+        
+        return {
+            "total_invoices": len(invoices),
+            "total_amount": round(total_amount, 2),
+            "unique_customers": len(unique_customers),
+            "total_items": total_items,
+            "average_invoice_amount": round(total_amount / len(invoices), 2) if invoices else 0
         }
