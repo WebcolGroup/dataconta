@@ -17,6 +17,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QPixmap, QColor
 
+# Importar módulo de visualizaciones
+try:
+    from dataconta.reports.charts import generate_all_charts
+    CHARTS_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Módulo de gráficas no disponible: {e}")
+    CHARTS_AVAILABLE = False
+
 
 class DataContaFreeGUI(QMainWindow):
     """DataConta FREE GUI con estilo PRO y funcionalidades reales."""
@@ -243,6 +251,25 @@ class DataContaFreeGUI(QMainWindow):
         """)
         view_top_clients_btn.clicked.connect(self.show_top_clients_detail)
         
+        # Botón para generar visualizaciones KPI
+        if CHARTS_AVAILABLE:
+            charts_btn = QPushButton("📊 Generar Visualizaciones KPI")
+            charts_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #9c27b0;
+                    color: white;
+                    border: none;
+                    padding: 10px;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 5px 0px;
+                }
+                QPushButton:hover {
+                    background-color: #7b1fa2;
+                }
+            """)
+            charts_btn.clicked.connect(self.generate_kpis_visualizations)
+        
         # CARGAR KPIs EXISTENTES INMEDIATAMENTE DESPUÉS DE CREAR WIDGETS
         self.load_existing_kpis_immediately()
         
@@ -305,6 +332,8 @@ class DataContaFreeGUI(QMainWindow):
         layout.addWidget(kpi_group)
         layout.addWidget(update_kpis_btn)
         layout.addWidget(view_top_clients_btn)
+        if CHARTS_AVAILABLE:
+            layout.addWidget(charts_btn)
         layout.addWidget(upgrade_group)
         
         # Configurar el scroll area
@@ -2614,6 +2643,95 @@ sin aplicar filtros para probar la conectividad.
         except Exception as e:
             self.log_message(f"❌ Error en exportación Excel: {e}")
             QMessageBox.critical(self, "Error", f"Error en exportación Excel:\n{e}")
+    
+    def generate_kpis_visualizations(self):
+        """Generar visualizaciones automáticas de los KPIs."""
+        try:
+            if not CHARTS_AVAILABLE:
+                QMessageBox.warning(
+                    self, 
+                    "Función No Disponible",
+                    "El módulo de visualizaciones no está disponible.\n\n"
+                    "Para instalar las dependencias necesarias:\n"
+                    "pip install matplotlib seaborn\n\n"
+                    "Luego reinicie la aplicación."
+                )
+                return
+            
+            self.log_message("📊 Iniciando generación de visualizaciones KPI...")
+            
+            # Buscar el archivo KPI más reciente
+            kpis_dir = "outputs/kpis"
+            if not os.path.exists(kpis_dir):
+                QMessageBox.warning(
+                    self,
+                    "Sin Datos KPI", 
+                    "No se encontraron datos de KPIs.\n\n"
+                    "Primero actualice los KPIs presionando:\n"
+                    "'🔄 Actualizar KPIs con Datos Reales'"
+                )
+                return
+            
+            # Encontrar archivo KPI más reciente
+            kpi_files = [f for f in os.listdir(kpis_dir) if f.endswith('.json')]
+            if not kpi_files:
+                QMessageBox.warning(
+                    self,
+                    "Sin Archivos KPI",
+                    "No se encontraron archivos JSON de KPIs.\n\n" 
+                    "Genere los KPIs primero."
+                )
+                return
+            
+            # Usar el archivo más reciente
+            latest_kpi_file = max(kpi_files, key=lambda f: os.path.getctime(os.path.join(kpis_dir, f)))
+            kpi_file_path = os.path.join(kpis_dir, latest_kpi_file)
+            
+            self.log_message(f"📊 Usando archivo KPI: {latest_kpi_file}")
+            
+            # Generar todas las visualizaciones
+            generated_files = generate_all_charts(kpi_file_path)
+            
+            if not generated_files:
+                QMessageBox.warning(
+                    self,
+                    "Error en Visualizaciones",
+                    "No se pudieron generar las visualizaciones.\n"
+                    "Revise los logs para más detalles."
+                )
+                return
+            
+            # Mostrar mensaje de éxito
+            charts_list = "\\n".join([
+                f"• {chart_type.replace('_', ' ').title()}: {os.path.basename(path)}"
+                for chart_type, path in generated_files.items()
+            ])
+            
+            self.log_message(f"✅ Se generaron {len(generated_files)} visualizaciones exitosamente")
+            
+            QMessageBox.information(
+                self,
+                "✅ Visualizaciones Generadas",
+                f"Se generaron {len(generated_files)} gráficas de KPIs:\\n\\n"
+                f"{charts_list}\\n\\n"
+                f"📁 Ubicación: outputs/charts/\\n"
+                f"📊 Datos desde: {latest_kpi_file}\\n\\n"
+                f"Las gráficas incluyen:\\n"
+                f"📈 Evolución de ventas mensual\\n"
+                f"👑 Top 10 clientes consolidados\\n" 
+                f"📦 Top 10 productos por ventas\\n"
+                f"📊 Distribución estados facturas\\n"
+                f"💰 Composición ventas vs impuestos"
+            )
+            
+        except Exception as e:
+            self.log_message(f"❌ Error generando visualizaciones: {str(e)}")
+            QMessageBox.critical(
+                self, 
+                "Error de Visualización",
+                f"Error al generar visualizaciones:\\n\\n{str(e)}\\n\\n"
+                f"Verifique que matplotlib y seaborn estén instalados."
+            )
 
 
 def create_free_splash(app=None):
