@@ -40,7 +40,9 @@ class DataContaFreeGUI(QMainWindow):
     def init_ui(self):
         """Inicializar la interfaz con estilo PRO."""
         self.setWindowTitle("🆓 DataConta FREE - Gestión Profesional de Facturas")
-        self.setGeometry(50, 50, 1400, 900)
+        # Configurar ventana maximizada al iniciar
+        self.setGeometry(50, 50, 1400, 900)  # Geometría por defecto
+        self.showMaximized()  # Mostrar maximizada
         
         # Widget central
         central_widget = QWidget()
@@ -167,7 +169,7 @@ class DataContaFreeGUI(QMainWindow):
             ("💰 Ventas Totales", f"${kpis_data.get('ventas_totales', 0):,.0f}", "#4caf50"),
             ("📄 Facturas Año", f"{kpis_data.get('num_facturas', 0):,}", "#2196f3"),
             ("🎯 Ticket Promedio", f"${kpis_data.get('ticket_promedio', 0):,.0f}", "#ff5722"),
-            ("� Top Cliente", f"{kpis_data.get('top_cliente', 'Calculando...')}", "#ff9800"),
+            ("👑 Top Cliente", f"{kpis_data.get('top_cliente', 'Calculando...')[:25]}", "#ff9800"),
             ("🔄 Última Actualización", f"{kpis_data.get('ultima_sync', 'Ahora')}", "#9c27b0")
         ]
         
@@ -222,6 +224,24 @@ class DataContaFreeGUI(QMainWindow):
             }
         """)
         update_kpis_btn.clicked.connect(self.refresh_dashboard_kpis)
+        
+        # Botón para ver TOP CLIENTES DETALLADO
+        view_top_clients_btn = QPushButton("👑 Ver TOP 10 Clientes Detallado")
+        view_top_clients_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ff9800;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+                font-weight: bold;
+                margin: 5px 0px;
+            }
+            QPushButton:hover {
+                background-color: #f57c00;
+            }
+        """)
+        view_top_clients_btn.clicked.connect(self.show_top_clients_detail)
         
         # CARGAR KPIs EXISTENTES INMEDIATAMENTE DESPUÉS DE CREAR WIDGETS
         self.load_existing_kpis_immediately()
@@ -284,6 +304,7 @@ class DataContaFreeGUI(QMainWindow):
         
         layout.addWidget(kpi_group)
         layout.addWidget(update_kpis_btn)
+        layout.addWidget(view_top_clients_btn)
         layout.addWidget(upgrade_group)
         
         # Configurar el scroll area
@@ -1652,6 +1673,175 @@ Contacto: ventas@dataconta.com"""
         
         return benefits.get(feature, "Funcionalidad avanzada exclusiva de versiones PRO/ENTERPRISE")
 
+    def show_top_clients_detail(self):
+        """Mostrar ventana detallada con el TOP 10 de clientes."""
+        try:
+            # Cargar KPIs más recientes
+            kpis_data = self.load_existing_kpis_sync()
+            
+            if not kpis_data or 'ventas_por_cliente' not in kpis_data:
+                QMessageBox.warning(
+                    self, 
+                    "Sin Datos", 
+                    "No hay datos de clientes disponibles.\n\nPrimero actualice los KPIs con el botón:\n'🔄 Actualizar KPIs con Datos Reales'"
+                )
+                return
+            
+            ventas_clientes = kpis_data['ventas_por_cliente']
+            
+            if not ventas_clientes:
+                QMessageBox.warning(self, "Sin Datos", "No hay datos de clientes para mostrar.")
+                return
+            
+            # Crear ventana emergente
+            dialog = QWidget()
+            dialog.setWindowTitle("🏆 TOP 10 CLIENTES - Análisis Detallado")
+            dialog.setGeometry(200, 200, 800, 600)
+            dialog.setStyleSheet("""
+                QWidget {
+                    background-color: #f5f5f5;
+                    font-family: Arial;
+                }
+            """)
+            
+            layout = QVBoxLayout(dialog)
+            
+            # Header informativo
+            header = QLabel(f"""
+            🏆 TOP 10 CLIENTES - ANÁLISIS DETALLADO
+            
+            📊 Total de clientes únicos: {len(ventas_clientes)}
+            💰 Ventas totales: ${kpis_data.get('ventas_totales', 0):,.0f}
+            📈 Período: Año {datetime.now().year}
+            """)
+            header.setStyleSheet("""
+                background-color: #1976d2;
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            """)
+            header.setWordWrap(True)
+            layout.addWidget(header)
+            
+            # Tabla de clientes
+            table = QTableWidget()
+            top_10 = ventas_clientes[:10]  # Solo top 10
+            table.setRowCount(len(top_10))
+            table.setColumnCount(5)
+            table.setHorizontalHeaderLabels([
+                "Posición", "NIT/CC", "Cliente", "Monto Total", "% del Total"
+            ])
+            
+            ventas_totales = kpis_data.get('ventas_totales', 1)
+            
+            for i, cliente in enumerate(top_10):
+                # Posición
+                pos_item = QTableWidgetItem(f"#{i+1}")
+                pos_item.setTextAlignment(Qt.AlignCenter)
+                if i == 0:  # TOP 1
+                    pos_item.setBackground(QColor("#ffd700"))  # Dorado
+                elif i == 1:  # TOP 2
+                    pos_item.setBackground(QColor("#c0c0c0"))  # Plata
+                elif i == 2:  # TOP 3
+                    pos_item.setBackground(QColor("#cd7f32"))  # Bronce
+                table.setItem(i, 0, pos_item)
+                
+                # NIT
+                nit_item = QTableWidgetItem(str(cliente['cliente_nit']))
+                nit_item.setTextAlignment(Qt.AlignCenter)
+                table.setItem(i, 1, nit_item)
+                
+                # Nombre del cliente (usar display si existe, si no el nombre original)
+                cliente_nombre = cliente.get('cliente_display', cliente.get('cliente_nombre', 'Sin Nombre'))
+                nombre_item = QTableWidgetItem(cliente_nombre)
+                table.setItem(i, 2, nombre_item)
+                
+                # Monto total
+                monto = float(cliente['total'])
+                monto_item = QTableWidgetItem(f"${monto:,.0f}")
+                monto_item.setTextAlignment(Qt.AlignRight)
+                table.setItem(i, 3, monto_item)
+                
+                # Porcentaje
+                porcentaje = (monto / ventas_totales) * 100
+                pct_item = QTableWidgetItem(f"{porcentaje:.1f}%")
+                pct_item.setTextAlignment(Qt.AlignCenter)
+                table.setItem(i, 4, pct_item)
+            
+            # Configurar tabla
+            table.setStyleSheet("""
+                QTableWidget {
+                    border: 2px solid #1976d2;
+                    border-radius: 8px;
+                    gridline-color: #e0e0e0;
+                    background-color: white;
+                }
+                QHeaderView::section {
+                    background-color: #1976d2;
+                    color: white;
+                    padding: 8px;
+                    font-weight: bold;
+                }
+                QTableWidget::item {
+                    padding: 8px;
+                }
+            """)
+            table.resizeColumnsToContents()
+            layout.addWidget(table)
+            
+            # Footer con estadísticas
+            footer_stats = f"""
+            📈 ESTADÍSTICAS ADICIONALES:
+            
+            🥇 Cliente #1: {top_10[0].get('cliente_display', top_10[0].get('cliente_nombre', 'N/A')) if top_10 else 'N/A'}
+            💰 Representa el {((float(top_10[0]['total']) / ventas_totales) * 100):.1f}% de las ventas totales
+            
+            📊 Top 3 representa: {sum(float(c['total']) for c in top_10[:3]) / ventas_totales * 100:.1f}% del total
+            📊 Top 5 representa: {sum(float(c['total']) for c in top_10[:5]) / ventas_totales * 100:.1f}% del total
+            📊 Top 10 representa: {sum(float(c['total']) for c in top_10) / ventas_totales * 100:.1f}% del total
+            """
+            
+            footer = QLabel(footer_stats)
+            footer.setStyleSheet("""
+                background-color: #e8f5e8;
+                padding: 10px;
+                border-radius: 8px;
+                border: 2px solid #4caf50;
+                font-size: 11px;
+            """)
+            footer.setWordWrap(True)
+            layout.addWidget(footer)
+            
+            # Botón cerrar
+            close_btn = QPushButton("✅ Cerrar")
+            close_btn.clicked.connect(dialog.close)
+            close_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #1976d2;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #1565c0;
+                }
+            """)
+            layout.addWidget(close_btn)
+            
+            # Mostrar ventana
+            dialog.show()
+            self.top_clients_window = dialog  # Mantener referencia
+            
+            self.log_message(f"🏆 Mostrado TOP {len(top_10)} clientes - Cliente #1: {top_10[0].get('cliente_display', 'N/A')}")
+            
+        except Exception as e:
+            self.log_message(f"❌ Error mostrando top clientes: {e}")
+            QMessageBox.critical(self, "Error", f"Error mostrando top clientes:\n{str(e)}")
+
     # FUNCIONES AUXILIARES PARA INTERFAZ SIIGO API
     def export_siigo_csv_with_filters(self):
         """Exportar facturas de Siigo API a CSV usando los filtros de la interfaz."""
@@ -1759,9 +1949,21 @@ sin aplicar filtros para probar la conectividad.
             # 3. Ticket promedio por factura = SUM(total) / COUNT(factura_id)
             kpis['ticket_promedio'] = kpis['ventas_totales'] / kpis['num_facturas'] if kpis['num_facturas'] > 0 else 0
             
-            # 4. Ventas por cliente = SUM(total) agrupado por cliente
-            ventas_por_cliente = encabezados_df.groupby(['cliente_nit', 'cliente_nombre'])['total'].sum().reset_index()
-            ventas_por_cliente = ventas_por_cliente.sort_values('total', ascending=False)
+            # 4. Ventas por cliente = SUM(total) agrupado por cliente (CONSOLIDADO POR NIT)
+            # Primero consolidamos por NIT para evitar duplicados
+            ventas_consolidadas = encabezados_df.groupby('cliente_nit').agg({
+                'total': 'sum',
+                'cliente_nombre': 'first'  # Tomar el primer nombre encontrado
+            }).reset_index()
+            
+            # Limpiar nombres de clientes: si hay nombre real, usarlo; si no, mostrar NIT
+            ventas_consolidadas['cliente_display'] = ventas_consolidadas.apply(
+                lambda row: row['cliente_nombre'] if row['cliente_nombre'] != 'Cliente Sin Nombre' 
+                           else f"Cliente NIT: {row['cliente_nit']}", axis=1
+            )
+            
+            # Ordenar por total descendente
+            ventas_por_cliente = ventas_consolidadas.sort_values('total', ascending=False)
             kpis['ventas_por_cliente'] = ventas_por_cliente.to_dict('records')
             
             # 5. Ventas por producto/servicio = SUM(subtotal) agrupado por producto
@@ -1798,8 +2000,29 @@ sin aplicar filtros para probar la conectividad.
             estados_facturas = encabezados_df.groupby(['estado', 'payment_status']).size().reset_index(name='cantidad')
             kpis['estados_facturas'] = estados_facturas.to_dict('records')
             
-            # Datos adicionales para dashboard
-            kpis['top_cliente'] = ventas_por_cliente.iloc[0]['cliente_nombre'] if len(ventas_por_cliente) > 0 else 'N/A'
+            # Datos adicionales para dashboard - MEJORADOS
+            if len(ventas_por_cliente) > 0:
+                top_cliente_info = ventas_por_cliente.iloc[0]
+                kpis['top_cliente'] = top_cliente_info['cliente_display']
+                kpis['top_cliente_monto'] = float(top_cliente_info['total'])
+                kpis['top_cliente_nit'] = top_cliente_info['cliente_nit']
+                
+                # Crear resumen del top 5 para dashboard
+                kpis['top_5_resumen'] = []
+                for i in range(min(5, len(ventas_por_cliente))):
+                    cliente = ventas_por_cliente.iloc[i]
+                    kpis['top_5_resumen'].append({
+                        'posicion': i + 1,
+                        'nombre': cliente['cliente_display'],
+                        'nit': cliente['cliente_nit'],
+                        'total': float(cliente['total']),
+                        'porcentaje': (float(cliente['total']) / kpis['ventas_totales']) * 100
+                    })
+            else:
+                kpis['top_cliente'] = 'N/A'
+                kpis['top_cliente_monto'] = 0
+                kpis['top_5_resumen'] = []
+                
             kpis['ultima_sync'] = datetime.now().strftime("%H:%M:%S")
             kpis['estado_sistema'] = 'ACTIVO ✅'
             
