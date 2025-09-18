@@ -33,6 +33,9 @@ class DataContaFreeGUI(QMainWindow):
         self.kpi_timer.setSingleShot(True)
         self.kpi_timer.timeout.connect(self.update_dashboard_kpis)
         self.kpi_timer.start(2000)  # Actualizar después de 2 segundos
+        
+        # Cargar KPIs existentes si están disponibles
+        QTimer.singleShot(5000, self.load_existing_kpis)  # Aumentar tiempo a 5 segundos
     
     def init_ui(self):
         """Inicializar la interfaz con estilo PRO."""
@@ -219,6 +222,9 @@ class DataContaFreeGUI(QMainWindow):
             }
         """)
         update_kpis_btn.clicked.connect(self.refresh_dashboard_kpis)
+        
+        # CARGAR KPIs EXISTENTES INMEDIATAMENTE DESPUÉS DE CREAR WIDGETS
+        self.load_existing_kpis_immediately()
         
         # Información de funciones avanzadas
         upgrade_group = QGroupBox("🚀 ¿Quiere más funcionalidades?")
@@ -1031,22 +1037,265 @@ class DataContaFreeGUI(QMainWindow):
     def log_message(self, message):
         """Agregar mensaje al log."""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.output_text.append(f"[{timestamp}] {message}")
+        formatted_message = f"[{timestamp}] {message}"
+        
+        # Solo agregar al log si output_text está disponible
+        if hasattr(self, 'output_text') and self.output_text:
+            self.output_text.append(formatted_message)
+        else:
+            # Si no está disponible, imprimir en consola para debug
+            print(formatted_message)
     
     def update_dashboard_kpis(self):
         """Actualizar KPIs del dashboard con datos reales de Siigo."""
         try:
             self.log_message("🔄 Actualizando KPIs del dashboard...")
-            # Los KPIs reales se calcularán cuando el usuario los necesite específicamente
-            # Por ahora mantener valores por defecto para evitar demoras en el inicio
-            self.log_message("✅ Dashboard listo con KPIs iniciales")
+            
+            # Intentar cargar KPIs existentes primero
+            existing_kpis = self.load_existing_kpis_sync()
+            if existing_kpis:
+                self.log_message("📊 KPIs cargados desde archivo guardado")
+                # Actualizar widgets inmediatamente si están disponibles
+                if hasattr(self, 'kpi_widgets') and self.kpi_widgets:
+                    self.update_kpis_widgets(existing_kpis)
+                    self.log_message("🔄 Dashboard actualizado con KPIs guardados")
+                else:
+                    self.log_message("⚠️  Widgets no disponibles para actualizar")
+            else:
+                self.log_message("📂 No hay KPIs guardados, usando valores iniciales")
+            
+            self.log_message("✅ Dashboard listo con KPIs")
         except Exception as e:
             self.log_message(f"❌ Error actualizando KPIs: {e}")
+    
+    def load_existing_kpis_sync(self):
+        """Versión síncrona de carga de KPIs para usar durante la inicialización."""
+        try:
+            import os
+            import json
+            import glob
+            
+            kpis_dir = "outputs/kpis"
+            
+            if not os.path.exists(kpis_dir):
+                return None
+            
+            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
+            kpi_files = glob.glob(pattern)
+            
+            if not kpi_files:
+                return None
+            
+            latest_file = max(kpi_files, key=os.path.getmtime)
+            
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                raw_data = json.load(f)
+            
+            # MANEJAR DIFERENTES FORMATOS DE ARCHIVO:
+            # Formato 1: KPIs en raíz (archivos de prueba)
+            # Formato 2: KPIs dentro de objeto 'kpis' (archivos reales de API)
+            
+            if 'kpis' in raw_data and 'metadata' in raw_data:
+                # Formato API real: {'metadata': {...}, 'kpis': {...}}
+                kpis_data = raw_data['kpis']
+                self.log_message(f"📊 Cargado KPI formato API real desde: {os.path.basename(latest_file)}")
+            elif 'ventas_totales' in raw_data:
+                # Formato simple: {'ventas_totales': ..., 'num_facturas': ...}
+                kpis_data = raw_data
+                self.log_message(f"📊 Cargado KPI formato simple desde: {os.path.basename(latest_file)}")
+            else:
+                # Formato desconocido
+                self.log_message(f"⚠️  Formato de KPI no reconocido en: {os.path.basename(latest_file)}")
+                return None
+            
+            return kpis_data
+            
+        except Exception as e:
+            self.log_message(f"❌ Error en load_existing_kpis_sync: {e}")
+            return None
+    
+    def load_existing_kpis_immediately(self):
+        """Cargar KPIs existentes inmediatamente después de crear widgets."""
+        try:
+            # Verificar que los widgets estén disponibles
+            if not hasattr(self, 'kpi_widgets') or not self.kpi_widgets:
+                self.log_message("⚠️  Widgets KPIs no disponibles aún")
+                return
+            
+            self.log_message(f"🔍 Widgets disponibles: {list(self.kpi_widgets.keys())}")
+            
+            # Cargar KPIs existentes
+            existing_kpis = self.load_existing_kpis_sync()
+            if existing_kpis:
+                self.log_message("📊 KPIs cargados desde archivo guardado")
+                self.update_kpis_widgets(existing_kpis)
+                self.log_message("🔄 Dashboard actualizado con KPIs guardados")
+            else:
+                self.log_message("📂 No hay KPIs guardados disponibles")
+                
+        except Exception as e:
+            self.log_message(f"❌ Error en carga inmediata de KPIs: {e}")
+    
+    def load_existing_kpis(self):
+        """Cargar KPIs existentes desde el archivo JSON más reciente en outputs/kpis."""
+        try:
+            import os
+            import json
+            import glob
+            from datetime import datetime
+            
+            kpis_dir = "outputs/kpis"
+            
+            # Verificar si existe el directorio
+            if not os.path.exists(kpis_dir):
+                self.log_message("📂 No existe directorio de KPIs guardados")
+                return None
+            
+            # Buscar archivos JSON de KPIs (patrón: kpis_siigo_*)
+            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
+            kpi_files = glob.glob(pattern)
+            
+            if not kpi_files:
+                self.log_message("📂 No hay KPIs guardados previamente")
+                return None
+            
+            # Obtener el archivo más reciente
+            latest_file = max(kpi_files, key=os.path.getmtime)
+            
+            # Cargar el archivo JSON
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                raw_data = json.load(f)
+            
+            # MANEJAR DIFERENTES FORMATOS DE ARCHIVO:
+            if 'kpis' in raw_data and 'metadata' in raw_data:
+                # Formato API real
+                kpis_data = raw_data['kpis']
+                self.log_message(f"📊 KPIs cargados desde: {os.path.basename(latest_file)} (formato API)")
+            elif 'ventas_totales' in raw_data:
+                # Formato simple
+                kpis_data = raw_data
+                self.log_message(f"📊 KPIs cargados desde: {os.path.basename(latest_file)} (formato simple)")
+            else:
+                self.log_message(f"⚠️  Formato de KPI no reconocido")
+                return None
+            
+            # Debug: verificar estado de kpi_widgets
+            self.log_message(f"🔍 Debug - hasattr kpi_widgets: {hasattr(self, 'kpi_widgets')}")
+            if hasattr(self, 'kpi_widgets'):
+                self.log_message(f"🔍 Debug - kpi_widgets keys: {list(self.kpi_widgets.keys())}")
+                self.log_message(f"🔍 Debug - kpi_widgets count: {len(self.kpi_widgets)}")
+            
+            # Actualizar widgets visuales si están disponibles
+            if hasattr(self, 'kpi_widgets') and self.kpi_widgets:
+                self.update_kpis_widgets(kpis_data)
+                self.log_message("🔄 Dashboard actualizado con KPIs guardados")
+            else:
+                self.log_message("⚠️  Widgets KPIs no disponibles aún - reintentando en 2 segundos")
+                # Reintentar después de 2 segundos
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(2000, lambda: self.retry_load_kpis(kpis_data))
+            
+            return kpis_data
+            
+        except Exception as e:
+            self.log_message(f"❌ Error cargando KPIs guardados: {e}")
+            return None
+    
+    def retry_load_kpis(self, kpis_data, attempt=1, max_attempts=3):
+        """Reintentar actualización de widgets KPIs si no estaban listos."""
+        try:
+            self.log_message(f"🔄 Reintentando actualización de widgets KPIs (intento {attempt}/{max_attempts})...")
+            
+            if hasattr(self, 'kpi_widgets') and self.kpi_widgets:
+                self.update_kpis_widgets(kpis_data)
+                self.log_message("✅ Dashboard actualizado con KPIs guardados (reintento exitoso)")
+            else:
+                if attempt < max_attempts:
+                    self.log_message(f"❌ Widgets KPIs aún no disponibles - reintentando en 3 segundos (intento {attempt+1})")
+                    from PySide6.QtCore import QTimer
+                    QTimer.singleShot(3000, lambda: self.retry_load_kpis(kpis_data, attempt+1, max_attempts))
+                else:
+                    self.log_message("❌ Widgets KPIs no disponibles después de todos los intentos")
+                    self.log_message(f"🔍 kpi_widgets disponible: {hasattr(self, 'kpi_widgets')}")
+                    if hasattr(self, 'kpi_widgets'):
+                        self.log_message(f"🔍 kpi_widgets keys: {list(self.kpi_widgets.keys())}")
+                        self.log_message(f"🔍 kpi_widgets count: {len(self.kpi_widgets)}")
+                    
+        except Exception as e:
+            self.log_message(f"❌ Error en reintento de KPIs: {e}")
+    
+    def delete_old_kpis(self):
+        """Eliminar archivos JSON de KPIs anteriores antes de crear nuevos."""
+        try:
+            import os
+            import glob
+            
+            kpis_dir = "outputs/kpis"
+            
+            if not os.path.exists(kpis_dir):
+                return
+            
+            # Buscar archivos JSON de KPIs existentes
+            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
+            old_files = glob.glob(pattern)
+            
+            # Eliminar archivos antiguos
+            deleted_count = 0
+            for file_path in old_files:
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                    self.log_message(f"🗑️  Eliminado: {os.path.basename(file_path)}")
+                except Exception as e:
+                    self.log_message(f"⚠️  No se pudo eliminar {os.path.basename(file_path)}: {e}")
+            
+            if deleted_count > 0:
+                self.log_message(f"✅ {deleted_count} archivo(s) de KPIs anteriores eliminados")
+            
+        except Exception as e:
+            self.log_message(f"❌ Error eliminando KPIs antiguos: {e}")
+    
+    def update_kpis_widgets(self, kpis_data):
+        """Actualizar los widgets visuales del dashboard con datos de KPIs."""
+        try:
+            from datetime import datetime
+            
+            if not hasattr(self, 'kpi_widgets') or not self.kpi_widgets:
+                return
+            
+            # Actualizar cada widget KPI
+            if 'ventas_totales' in self.kpi_widgets:
+                self.kpi_widgets['ventas_totales'].setText(f"${kpis_data.get('ventas_totales', 0):,.0f}")
+            
+            if 'num_facturas' in self.kpi_widgets:
+                self.kpi_widgets['num_facturas'].setText(f"{kpis_data.get('num_facturas', 0):,}")
+            
+            if 'ticket_promedio' in self.kpi_widgets:
+                self.kpi_widgets['ticket_promedio'].setText(f"${kpis_data.get('ticket_promedio', 0):,.0f}")
+            
+            if 'top_cliente' in self.kpi_widgets:
+                top_cliente = kpis_data.get('top_cliente', 'N/A')
+                if len(str(top_cliente)) > 20:
+                    top_cliente = str(top_cliente)[:20] + "..."
+                self.kpi_widgets['top_cliente'].setText(str(top_cliente))
+            
+            if 'ultima_sync' in self.kpi_widgets:
+                # Usar timestamp del archivo o fecha actual
+                timestamp = kpis_data.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                if len(timestamp) > 16:
+                    timestamp = timestamp[-8:]  # Solo mostrar hora
+                self.kpi_widgets['ultima_sync'].setText(f"Cargado {timestamp}")
+            
+        except Exception as e:
+            self.log_message(f"❌ Error actualizando widgets KPIs: {e}")
     
     def refresh_dashboard_kpis(self):
         """Refrescar KPIs del dashboard con datos reales cuando el usuario lo solicite."""
         try:
             self.log_message("🚀 Calculando KPIs reales desde Siigo API...")
+            
+            # Eliminar archivos JSON de KPIs anteriores
+            self.delete_old_kpis()
             
             # Llamar a la función de KPIs reales
             kpis_data = self.calculate_real_kpis()
@@ -2144,9 +2393,8 @@ sin aplicar filtros para probar la conectividad.
             QMessageBox.critical(self, "Error", f"Error en exportación Excel:\n{e}")
 
 
-def create_free_splash():
+def create_free_splash(app=None):
     """Crear splash screen para versión FREE."""
-    app = QApplication.instance()
     splash_pixmap = QPixmap(500, 350)
     splash_pixmap.fill(QColor(25, 118, 210))  # Mismo color que PRO
     
@@ -2166,7 +2414,7 @@ def main():
     app = QApplication(sys.argv)
     
     # Splash screen
-    splash = create_free_splash()
+    splash = create_free_splash(app)
     
     # Tiempo de splash
     QTimer.singleShot(2500, splash.close)
