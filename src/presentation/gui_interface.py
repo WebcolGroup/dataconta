@@ -22,9 +22,10 @@ from src.infrastructure.config.dynamic_menu_config import DynamicMenuManager
 class DataContaMainWindow(QMainWindow):
     """Main window for DATACONTA GUI application."""
     
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, license_manager=None):
         super().__init__()
         self._logger = logger
+        self._license_manager = license_manager
         self.setWindowTitle("DATACONTA - Sistema Avanzado de Gestión")
         self.setMinimumSize(1000, 700)
         
@@ -63,12 +64,21 @@ class DataContaMainWindow(QMainWindow):
         """Setup the header section."""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.Box)
-        header_frame.setStyleSheet("QFrame { background-color: #2c3e50; color: white; padding: 10px; }")
+        
+        # Cambiar color de header según licencia
+        if self._is_free_license():
+            header_frame.setStyleSheet("QFrame { background-color: #27ae60; color: white; padding: 10px; }")
+            title_text = "🆓 DATACONTA FREE - VERSIÓN GRATUITA"
+            subtitle_text = "Funcionalidades básicas | Límite: 500 facturas por consulta"
+        else:
+            header_frame.setStyleSheet("QFrame { background-color: #2c3e50; color: white; padding: 10px; }")
+            title_text = "🏢 DATACONTA - SISTEMA AVANZADO DE MENÚS"
+            subtitle_text = "Interfaz Gráfica PySide6 | Arquitectura Hexagonal | Principios SOLID"
         
         header_layout = QVBoxLayout(header_frame)
         
         # Title
-        title_label = QLabel("🏢 DATACONTA - SISTEMA AVANZADO DE MENÚS")
+        title_label = QLabel(title_text)
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -78,7 +88,7 @@ class DataContaMainWindow(QMainWindow):
         header_layout.addWidget(title_label)
         
         # Subtitle
-        subtitle_label = QLabel("Interfaz Gráfica PySide6 | Arquitectura Hexagonal | Principios SOLID")
+        subtitle_label = QLabel(subtitle_text)
         subtitle_label.setAlignment(Qt.AlignCenter)
         subtitle_label.setStyleSheet("color: #ecf0f1; font-size: 10pt;")
         header_layout.addWidget(subtitle_label)
@@ -154,11 +164,18 @@ class DataContaMainWindow(QMainWindow):
         scroll_widget = QWidget()
         scroll_layout = QGridLayout(scroll_widget)
         
-        # Menu sections
-        self._setup_business_intelligence_section(scroll_layout, 0, 0)
-        self._setup_reports_section(scroll_layout, 0, 1)
-        self._setup_tools_section(scroll_layout, 1, 0)
-        self._setup_ollama_section(scroll_layout, 1, 1)
+        if self._is_free_license():
+            # FREE version - GUI Lite
+            self._setup_free_statistics_section(scroll_layout, 0, 0)
+            self._setup_free_query_section(scroll_layout, 0, 1)
+            self._setup_free_export_section(scroll_layout, 1, 0)
+            self._setup_blocked_features_section(scroll_layout, 1, 1)
+        else:
+            # Full version
+            self._setup_business_intelligence_section(scroll_layout, 0, 0)
+            self._setup_reports_section(scroll_layout, 0, 1)
+            self._setup_tools_section(scroll_layout, 1, 0)
+            self._setup_ollama_section(scroll_layout, 1, 1)
         
         scroll_area.setWidget(scroll_widget)
         scroll_area.setWidgetResizable(True)
@@ -432,13 +449,257 @@ class DataContaMainWindow(QMainWindow):
     def show_warning(self, title: str, message: str):
         """Show a warning dialog."""
         QMessageBox.warning(self, title, message)
+    
+    # ========================================================================================
+    # FREE LICENSE HELPER METHODS
+    # ========================================================================================
+    
+    def _is_free_license(self) -> bool:
+        """Check if current license is FREE."""
+        if self._license_manager:
+            return self._license_manager.get_license_type() == "FREE"
+        return True  # Default to FREE if no license manager
+    
+    def _show_blocked_feature_dialog(self, feature_name: str):
+        """Show dialog for blocked feature."""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Función Bloqueada")
+        msg.setText(f"🔒 {feature_name}")
+        msg.setInformativeText("Esta funcionalidad está disponible solo en Profesional o Enterprise.")
+        
+        upgrade_btn = msg.addButton("💼 Actualizar a PRO", QMessageBox.AcceptRole)
+        cancel_btn = msg.addButton("Cancelar", QMessageBox.RejectRole)
+        
+        msg.exec()
+        
+        if msg.clickedButton() == upgrade_btn:
+            self._show_upgrade_info()
+    
+    def _show_upgrade_info(self):
+        """Show upgrade information dialog."""
+        info_msg = QMessageBox(self)
+        info_msg.setIcon(QMessageBox.Information)
+        info_msg.setWindowTitle("Información de Upgrade")
+        info_msg.setText("💼 DATACONTA PROFESIONAL")
+        info_msg.setInformativeText(
+            "✨ Funcionalidades PRO:\n"
+            "• Informes financieros avanzados\n"
+            "• Exportación BI completa\n"
+            "• Análisis de tendencias\n"
+            "• Dashboard completo\n"
+            "• Sin límite de facturas\n\n"
+            "📧 Contacte a soporte para más información."
+        )
+        info_msg.exec()
+    
+    # ========================================================================================
+    # FREE VERSION GUI SECTIONS
+    # ========================================================================================
+    
+    def _setup_free_statistics_section(self, layout, row, col):
+        """Setup statistics section for FREE version."""
+        stats_group = QGroupBox("📊 Estadísticas Básicas (FREE)")
+        stats_group.setStyleSheet("QGroupBox { font-weight: bold; color: #27ae60; }")
+        stats_layout = QVBoxLayout(stats_group)
+        
+        # Description
+        desc_label = QLabel("📝 Métricas básicas de su negocio")
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 9pt;")
+        stats_layout.addWidget(desc_label)
+        
+        # Statistics display area
+        self.stats_display = QTextEdit()
+        self.stats_display.setReadOnly(True)
+        self.stats_display.setMaximumHeight(120)
+        self.stats_display.setStyleSheet("""
+            QTextEdit { 
+                background-color: #f8f9fa; 
+                border: 1px solid #27ae60; 
+                font-family: 'Arial', sans-serif; 
+                font-size: 9pt;
+                padding: 8px;
+            }
+        """)
+        self.stats_display.setText("📈 Haga clic en 'Actualizar' para ver sus estadísticas")
+        stats_layout.addWidget(self.stats_display)
+        
+        # Update button
+        self.update_stats_btn = QPushButton("🔄 Actualizar Estadísticas")
+        self.update_stats_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #27ae60; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #229954; }
+        """)
+        stats_layout.addWidget(self.update_stats_btn)
+        
+        layout.addWidget(stats_group, row, col)
+    
+    def _setup_free_query_section(self, layout, row, col):
+        """Setup query section for FREE version."""
+        query_group = QGroupBox("📋 Consulta de Facturas (FREE)")
+        query_group.setStyleSheet("QGroupBox { font-weight: bold; color: #27ae60; }")
+        query_layout = QVBoxLayout(query_group)
+        
+        # Description with limit
+        desc_label = QLabel("📝 Consultar facturas (Límite: 500 facturas)")
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 9pt;")
+        query_layout.addWidget(desc_label)
+        
+        # Query button
+        self.query_invoices_btn = QPushButton("📋 Consultar Facturas")
+        self.query_invoices_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #3498db; color: white; 
+                padding: 10px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        query_layout.addWidget(self.query_invoices_btn)
+        
+        # API status button
+        self.check_api_btn = QPushButton("🔍 Verificar Estado de la API")
+        self.check_api_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #17a2b8; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #138496; }
+        """)
+        query_layout.addWidget(self.check_api_btn)
+        
+        layout.addWidget(query_group, row, col)
+    
+    def _setup_free_export_section(self, layout, row, col):
+        """Setup export section for FREE version."""
+        export_group = QGroupBox("📤 Exportación Simple (FREE)")
+        export_group.setStyleSheet("QGroupBox { font-weight: bold; color: #27ae60; }")
+        export_layout = QVBoxLayout(export_group)
+        
+        # Description
+        desc_label = QLabel("📝 Exportación básica de datos")
+        desc_label.setStyleSheet("color: #7f8c8d; font-size: 9pt;")
+        export_layout.addWidget(desc_label)
+        
+        # JSON export button
+        self.export_json_btn = QPushButton("📄 Exportar a JSON")
+        self.export_json_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #fd7e14; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #e8650e; }
+        """)
+        export_layout.addWidget(self.export_json_btn)
+        
+        # CSV export button
+        self.export_csv_simple_btn = QPushButton("📊 Exportar CSV Simple")
+        self.export_csv_simple_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #20c997; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #1aa085; }
+        """)
+        export_layout.addWidget(self.export_csv_simple_btn)
+        
+        # View files button
+        self.view_files_btn = QPushButton("📁 Ver Archivos")
+        self.view_files_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #6f42c1; color: white; 
+                padding: 8px; margin: 2px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+            }
+            QPushButton:hover { background-color: #5a359a; }
+        """)
+        export_layout.addWidget(self.view_files_btn)
+        
+        layout.addWidget(export_group, row, col)
+    
+    def _setup_blocked_features_section(self, layout, row, col):
+        """Setup blocked features section for FREE version."""
+        blocked_group = QGroupBox("🔒 Funciones Avanzadas (PRO/ENTERPRISE)")
+        blocked_group.setStyleSheet("QGroupBox { font-weight: bold; color: #dc3545; }")
+        blocked_layout = QVBoxLayout(blocked_group)
+        
+        # Description
+        desc_label = QLabel("📝 Funcionalidades disponibles en versiones de pago")
+        desc_label.setStyleSheet("color: #6c757d; font-size: 9pt;")
+        blocked_layout.addWidget(desc_label)
+        
+        # Blocked buttons
+        blocked_buttons = [
+            ("🔒 Informes Financieros", "Informes Financieros Avanzados"),
+            ("🔒 Business Intelligence", "Exportación BI Completa"),
+            ("🔒 Dashboard Completo", "Dashboard Ejecutivo"),
+            ("🔒 Análisis Predictivo", "Análisis con IA"),
+        ]
+        
+        for btn_text, feature_name in blocked_buttons:
+            blocked_btn = QPushButton(btn_text)
+            blocked_btn.setStyleSheet("""
+                QPushButton { 
+                    background-color: #6c757d; color: white; 
+                    padding: 8px; margin: 2px; 
+                    font-weight: bold; border: none; border-radius: 4px; 
+                }
+                QPushButton:hover { background-color: #5a6268; }
+            """)
+            # Connect to blocked feature handler
+            blocked_btn.clicked.connect(lambda checked, name=feature_name: self._show_blocked_feature_dialog(name))
+            blocked_layout.addWidget(blocked_btn)
+        
+        # Upgrade button
+        upgrade_btn = QPushButton("💼 ¡Actualizar a PRO!")
+        upgrade_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #28a745; color: white; 
+                padding: 10px; margin: 5px; 
+                font-weight: bold; border: none; border-radius: 4px; 
+                font-size: 10pt;
+            }
+            QPushButton:hover { background-color: #218838; }
+        """)
+        upgrade_btn.clicked.connect(self._show_upgrade_info)
+        blocked_layout.addWidget(upgrade_btn)
+        
+        layout.addWidget(blocked_group, row, col)
+    
+    def update_free_statistics(self, stats_data: dict):
+        """Update statistics display for FREE version."""
+        if not stats_data:
+            self.stats_display.setText("❌ No se pudieron obtener estadísticas")
+            return
+        
+        stats_text = f"""📊 ESTADÍSTICAS BÁSICAS - DATACONTA FREE
+        
+🔢 Total de facturas consultadas: {stats_data.get('total_invoices', 0):,}
+💰 Total vendido acumulado: ${stats_data.get('total_amount', 0):,.2f}
+👥 Número de clientes distintos: {stats_data.get('unique_customers', 0):,}
+📅 Facturas del mes actual: {stats_data.get('current_month_invoices', 0):,}
+📈 Promedio por factura: ${stats_data.get('average_invoice_amount', 0):,.2f}
+
+🆓 Licencia: FREE | 📊 Límite: 500 facturas por consulta
+💡 Actualice a PRO para funcionalidades avanzadas
+        """
+        
+        self.stats_display.setText(stats_text.strip())
 
 
 class GUIUserInterfaceAdapter(UserInterface):
     """GUI adapter for user interface operations."""
     
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, license_manager=None):
         self._logger = logger
+        self._license_manager = license_manager
         self._main_window = None
     
     def set_main_window(self, main_window: DataContaMainWindow):

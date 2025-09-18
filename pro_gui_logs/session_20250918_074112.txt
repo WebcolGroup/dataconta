@@ -1,0 +1,5 @@
+[2025-09-18 07:41:12] [INFO] Acción usuario: PRO GUI Startup - Usuario inició GUI PRO | user_action=PRO GUI Startup | details=Usuario inició GUI PRO
+[2025-09-18 07:42:06] [INFO] Acción usuario: PRO BI Analysis - Usuario ejecutó análisis BI completo | user_action=PRO BI Analysis | details=Usuario ejecutó análisis BI completo
+[2025-09-18 07:45:46] [INFO] Acción usuario: PRO Export - Usuario inició exportación: 📊 Excel Avanzado | user_action=PRO Export | details=Usuario inició exportación: 📊 Excel Avanzado
+[2025-09-18 07:46:19] [INFO] Acción usuario: PRO Generate Report - Usuario generó reporte: 💰 Flujo de Caja | user_action=PRO Generate Report | details=Usuario generó reporte: 💰 Flujo de Caja
+[2025-09-18 08:11:59] [INFO] Acción usuario: PRO GUI Close - Usuario cerró la aplicación PRO | user_action=PRO GUI Close | details=Usuario cerró la aplicación PRO

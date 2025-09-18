@@ -1,0 +1,1 @@
+[2025-09-17 14:59:02] [INFO] Acción usuario: GUI Startup - DataConta FREE GUI iniciado completamente | user_action=GUI Startup | details=DataConta FREE GUI iniciado completamente

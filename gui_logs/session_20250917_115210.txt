@@ -1,0 +1,2 @@
+[2025-09-17 11:52:10] [INFO] Acción usuario: GUI Startup - Usuario inició GUI FREE | user_action=GUI Startup | details=Usuario inició GUI FREE
+[2025-09-17 11:53:02] [INFO] Acción usuario: GUI Close - Usuario cerró la aplicación GUI | user_action=GUI Close | details=Usuario cerró la aplicación GUI
