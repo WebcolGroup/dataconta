@@ -6,6 +6,7 @@ Mantiene la funcionalidad de datos reales de Siigo + estilo profesional de la ve
 import sys
 import os
 from datetime import datetime
+import pandas as pd
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QLabel, QTextEdit, QTabWidget, QMessageBox,
@@ -22,8 +23,16 @@ class DataContaFreeGUI(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        # Inicializar referencias de widgets KPIs
+        self.kpi_widgets = {}
         self.init_ui()
         self.log_message("🆓 DataConta FREE iniciado con estilo PRO y datos reales")
+        
+        # Timer para actualizar KPIs después de que la interfaz esté lista
+        self.kpi_timer = QTimer()
+        self.kpi_timer.setSingleShot(True)
+        self.kpi_timer.timeout.connect(self.update_dashboard_kpis)
+        self.kpi_timer.start(2000)  # Actualizar después de 2 segundos
     
     def init_ui(self):
         """Inicializar la interfaz con estilo PRO."""
@@ -143,12 +152,16 @@ class DataContaFreeGUI(QMainWindow):
         kpi_group = QGroupBox("📊 KPIs Básicos - Versión FREE")
         kpi_layout = QGridLayout(kpi_group)
         
-        # KPIs simulados para FREE (más simples que PRO)
+        # KPIs iniciales (se actualizarán después)
+        kpis_data = self._get_default_kpis()
+        
+        kpi_names = ["ventas_totales", "num_facturas", "ticket_promedio", "top_cliente", "ultima_sync"]
         kpis = [
-            ("💰 Total Facturas", "847 facturas", "#4caf50"),
-            ("📊 Promedio/Factura", "$1,245,000", "#2196f3"),
-            ("📈 Estado Sistema", "ACTIVO ✅", "#ff9800"),
-            ("🔄 Última Sync", "Hace 2 min", "#9c27b0")
+            ("💰 Ventas Totales", f"${kpis_data.get('ventas_totales', 0):,.0f}", "#4caf50"),
+            ("📄 Facturas Año", f"{kpis_data.get('num_facturas', 0):,}", "#2196f3"),
+            ("🎯 Ticket Promedio", f"${kpis_data.get('ticket_promedio', 0):,.0f}", "#ff5722"),
+            ("� Top Cliente", f"{kpis_data.get('top_cliente', 'Calculando...')}", "#ff9800"),
+            ("🔄 Última Actualización", f"{kpis_data.get('ultima_sync', 'Ahora')}", "#9c27b0")
         ]
         
         for i, (label, value, color) in enumerate(kpis):
@@ -170,10 +183,31 @@ class DataContaFreeGUI(QMainWindow):
             value_widget = QLabel(value)
             value_widget.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
             
+            # Guardar referencia al widget de valor para actualizarlo después
+            self.kpi_widgets[kpi_names[i]] = value_widget
+            
             kpi_layout_inner.addWidget(label_widget)
             kpi_layout_inner.addWidget(value_widget)
             
             kpi_layout.addWidget(kpi_frame, 0, i)
+        
+        # Botón para actualizar KPIs reales
+        update_kpis_btn = QPushButton("🔄 Actualizar KPIs con Datos Reales")
+        update_kpis_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4caf50;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+                font-weight: bold;
+                margin: 10px 0px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        update_kpis_btn.clicked.connect(self.refresh_dashboard_kpis)
         
         # Información de funciones avanzadas
         upgrade_group = QGroupBox("🚀 ¿Quiere más funcionalidades?")
@@ -232,6 +266,7 @@ class DataContaFreeGUI(QMainWindow):
         upgrade_layout.addWidget(upgrade_btn)
         
         layout.addWidget(kpi_group)
+        layout.addWidget(update_kpis_btn)
         layout.addWidget(upgrade_group)
         
         return widget
@@ -886,6 +921,76 @@ class DataContaFreeGUI(QMainWindow):
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.output_text.append(f"[{timestamp}] {message}")
     
+    def update_dashboard_kpis(self):
+        """Actualizar KPIs del dashboard con datos reales de Siigo."""
+        try:
+            self.log_message("🔄 Actualizando KPIs del dashboard...")
+            # Los KPIs reales se calcularán cuando el usuario los necesite específicamente
+            # Por ahora mantener valores por defecto para evitar demoras en el inicio
+            self.log_message("✅ Dashboard listo con KPIs iniciales")
+        except Exception as e:
+            self.log_message(f"❌ Error actualizando KPIs: {e}")
+    
+    def refresh_dashboard_kpis(self):
+        """Refrescar KPIs del dashboard con datos reales cuando el usuario lo solicite."""
+        try:
+            self.log_message("🚀 Calculando KPIs reales desde Siigo API...")
+            
+            # Llamar a la función de KPIs reales
+            kpis_data = self.calculate_real_kpis()
+            
+            # ACTUALIZAR LOS WIDGETS VISUALES DEL DASHBOARD
+            if hasattr(self, 'kpi_widgets') and self.kpi_widgets:
+                from datetime import datetime
+                
+                # Actualizar cada widget KPI
+                if 'ventas_totales' in self.kpi_widgets:
+                    self.kpi_widgets['ventas_totales'].setText(f"${kpis_data.get('ventas_totales', 0):,.0f}")
+                
+                if 'num_facturas' in self.kpi_widgets:
+                    self.kpi_widgets['num_facturas'].setText(f"{kpis_data.get('num_facturas', 0):,}")
+                
+                if 'ticket_promedio' in self.kpi_widgets:
+                    self.kpi_widgets['ticket_promedio'].setText(f"${kpis_data.get('ticket_promedio', 0):,.0f}")
+                
+                if 'top_cliente' in self.kpi_widgets:
+                    top_cliente = kpis_data.get('top_cliente', 'N/A')
+                    if len(top_cliente) > 20:
+                        top_cliente = top_cliente[:20] + "..."
+                    self.kpi_widgets['top_cliente'].setText(top_cliente)
+                
+                if 'ultima_sync' in self.kpi_widgets:
+                    current_time = datetime.now().strftime("%H:%M:%S")
+                    self.kpi_widgets['ultima_sync'].setText(f"Actualizado {current_time}")
+                
+                self.log_message("🔄 Dashboard KPIs actualizados visualmente")
+            
+            # Mostrar resultado en los logs
+            self.log_message("📊 KPIs calculados exitosamente:")
+            self.log_message(f"💰 Ventas Totales: ${kpis_data.get('ventas_totales', 0):,.0f}")
+            self.log_message(f"📄 Total Facturas: {kpis_data.get('num_facturas', 0):,}")
+            self.log_message(f"🎯 Ticket Promedio: ${kpis_data.get('ticket_promedio', 0):,.0f}")
+            self.log_message(f"👤 Top Cliente: {kpis_data.get('top_cliente', 'N/A')}")
+            
+            QMessageBox.information(
+                self, 
+                "KPIs Actualizados", 
+                f"✅ KPIs calculados y actualizados en dashboard!\n\n"
+                f"💰 Ventas Totales: ${kpis_data.get('ventas_totales', 0):,.0f}\n"
+                f"📄 Total Facturas: {kpis_data.get('num_facturas', 0):,}\n"
+                f"🎯 Ticket Promedio: ${kpis_data.get('ticket_promedio', 0):,.0f}\n"
+                f"👤 Top Cliente: {kpis_data.get('top_cliente', 'N/A')[:30]}\n\n"
+                f"📁 KPIs guardados en: outputs/kpis/"
+            )
+            
+        except Exception as e:
+            self.log_message(f"❌ Error calculando KPIs reales: {e}")
+            QMessageBox.warning(
+                self, 
+                "Error", 
+                f"❌ Error calculando KPIs reales:\n{str(e)}"
+            )
+    
     # FUNCIONES EXISTENTES PRESERVADAS
     def export_csv_real(self, limit):
         """
@@ -1251,6 +1356,158 @@ sin aplicar filtros para probar la conectividad.
         # Llamar función sin filtros (últimas facturas)
         self.export_siigo_invoices_to_csv()
 
+    def calculate_real_kpis(self):
+        """
+        Calcular KPIs reales desde datos de Siigo para el año actual.
+        Usa la funcionalidad de descarga de facturas ya desarrollada.
+        
+        Returns:
+            dict: Diccionario con los KPIs calculados
+        """
+        import os
+        import json
+        from datetime import datetime, date
+        
+        try:
+            # Configurar rango para año actual
+            current_year = date.today().year
+            fecha_inicio = f"{current_year}-01-01"
+            fecha_fin = f"{current_year}-12-31"
+            
+            self.log_message(f"📊 Calculando KPIs para el año {current_year}...")
+            
+            # Descargar facturas del año actual usando función existente
+            encabezados_df, detalle_df = self.download_invoices(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin
+            )
+            
+            if encabezados_df is None or len(encabezados_df) == 0:
+                self.log_message("⚠️  No hay facturas para calcular KPIs")
+                return self._get_default_kpis()
+            
+            # CALCULAR KPIs SOLICITADOS
+            kpis = {}
+            
+            # 1. Ventas totales = SUM(total)
+            kpis['ventas_totales'] = float(encabezados_df['total'].sum())
+            
+            # 2. Número de facturas emitidas = COUNT(factura_id)
+            kpis['num_facturas'] = len(encabezados_df)
+            
+            # 3. Ticket promedio por factura = SUM(total) / COUNT(factura_id)
+            kpis['ticket_promedio'] = kpis['ventas_totales'] / kpis['num_facturas'] if kpis['num_facturas'] > 0 else 0
+            
+            # 4. Ventas por cliente = SUM(total) agrupado por cliente
+            ventas_por_cliente = encabezados_df.groupby(['cliente_nit', 'cliente_nombre'])['total'].sum().reset_index()
+            ventas_por_cliente = ventas_por_cliente.sort_values('total', ascending=False)
+            kpis['ventas_por_cliente'] = ventas_por_cliente.to_dict('records')
+            
+            # 5. Ventas por producto/servicio = SUM(subtotal) agrupado por producto
+            if len(detalle_df) > 0:
+                ventas_por_producto = detalle_df.groupby(['producto_codigo', 'producto_nombre'])['subtotal'].sum().reset_index()
+                ventas_por_producto = ventas_por_producto.sort_values('subtotal', ascending=False)
+                kpis['ventas_por_producto'] = ventas_por_producto.to_dict('records')
+            else:
+                kpis['ventas_por_producto'] = []
+            
+            # 6. Top 5 clientes por monto facturado
+            kpis['top_5_clientes'] = ventas_por_cliente.head(5).to_dict('records')
+            
+            # 7. Top 5 productos/servicios más vendidos
+            if len(detalle_df) > 0:
+                top_productos = detalle_df.groupby(['producto_codigo', 'producto_nombre'])['cantidad'].sum().reset_index()
+                top_productos = top_productos.sort_values('cantidad', ascending=False)
+                kpis['top_5_productos'] = top_productos.head(5).to_dict('records')
+            else:
+                kpis['top_5_productos'] = []
+            
+            # 8. Participación de impuestos = SUM(impuestos) / SUM(total)
+            total_impuestos = float(encabezados_df['impuestos'].sum())
+            kpis['participacion_impuestos'] = (total_impuestos / kpis['ventas_totales']) * 100 if kpis['ventas_totales'] > 0 else 0
+            
+            # 9. Evolución de ventas en el tiempo = tendencia mensual
+            encabezados_df['fecha'] = pd.to_datetime(encabezados_df['fecha'], errors='coerce')
+            encabezados_df['mes'] = encabezados_df['fecha'].dt.to_period('M')
+            evolucion_mensual = encabezados_df.groupby('mes')['total'].sum().reset_index()
+            evolucion_mensual['mes'] = evolucion_mensual['mes'].astype(str)
+            kpis['evolucion_ventas'] = evolucion_mensual.to_dict('records')
+            
+            # 10. Estado de las facturas = COUNT por estado
+            estados_facturas = encabezados_df.groupby(['estado', 'payment_status']).size().reset_index(name='cantidad')
+            kpis['estados_facturas'] = estados_facturas.to_dict('records')
+            
+            # Datos adicionales para dashboard
+            kpis['top_cliente'] = ventas_por_cliente.iloc[0]['cliente_nombre'] if len(ventas_por_cliente) > 0 else 'N/A'
+            kpis['ultima_sync'] = datetime.now().strftime("%H:%M:%S")
+            kpis['estado_sistema'] = 'ACTIVO ✅'
+            
+            # Guardar KPIs en archivo JSON
+            self._save_kpis_to_file(kpis, current_year)
+            
+            self.log_message(f"✅ KPIs calculados: {kpis['num_facturas']} facturas, ${kpis['ventas_totales']:,.0f} en ventas")
+            
+            return kpis
+            
+        except Exception as e:
+            self.log_message(f"❌ Error calculando KPIs: {e}")
+            return self._get_default_kpis()
+    
+    def _get_default_kpis(self):
+        """Obtener KPIs por defecto cuando hay error o no hay datos"""
+        from datetime import datetime
+        return {
+            'ventas_totales': 0,
+            'num_facturas': 0,
+            'ticket_promedio': 0,
+            'ventas_por_cliente': [],
+            'ventas_por_producto': [],
+            'top_5_clientes': [],
+            'top_5_productos': [],
+            'participacion_impuestos': 0,
+            'evolucion_ventas': [],
+            'estados_facturas': [],
+            'top_cliente': 'Sin datos',
+            'ultima_sync': datetime.now().strftime("%H:%M:%S"),
+            'estado_sistema': 'SIN DATOS ⚠️'
+        }
+    
+    def _save_kpis_to_file(self, kpis_data, year):
+        """Guardar KPIs en archivo JSON en la carpeta outputs/kpis"""
+        import os
+        import json
+        from datetime import datetime
+        
+        try:
+            # Crear directorio si no existe
+            kpis_dir = "outputs/kpis"
+            os.makedirs(kpis_dir, exist_ok=True)
+            
+            # Nombre de archivo con timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{kpis_dir}/kpis_siigo_{year}_{timestamp}.json"
+            
+            # Agregar metadatos
+            kpis_with_meta = {
+                'metadata': {
+                    'generado_en': datetime.now().isoformat(),
+                    'año': year,
+                    'version': 'DataConta FREE v1.0',
+                    'fuente': 'API Siigo'
+                },
+                'kpis': kpis_data
+            }
+            
+            # Guardar archivo
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(kpis_with_meta, f, indent=2, ensure_ascii=False, default=str)
+            
+            file_size = os.path.getsize(filename) / 1024
+            self.log_message(f"💾 KPIs guardados: {filename} ({file_size:.1f} KB)")
+            
+        except Exception as e:
+            self.log_message(f"❌ Error guardando KPIs: {e}")
+
     # NUEVA FUNCIONALIDAD: Descarga de facturas reales desde API Siigo
     def download_invoices(self, fecha_inicio=None, fecha_fin=None, cliente_id=None, 
                          cc=None, nit=None, estado=None):
@@ -1270,7 +1527,6 @@ sin aplicar filtros para probar la conectividad.
             tuple: (encabezados_df, detalle_df) DataFrames de pandas con los datos
         """
         import requests
-        import pandas as pd
         from dotenv import load_dotenv
         import base64
         
@@ -1478,7 +1734,6 @@ sin aplicar filtros para probar la conectividad.
         Returns:
             tuple: (encabezados_df, detalle_df) DataFrames procesados
         """
-        import pandas as pd
         
         # Validar entrada
         if not isinstance(invoices_data, list):
@@ -1497,6 +1752,16 @@ sin aplicar filtros para probar la conectividad.
                 if not isinstance(invoice, dict):
                     self.log_message(f"⚠️  Factura {i} no es diccionario: {type(invoice)}")
                     continue
+                
+                # DEBUG: Mostrar estructura de la primera factura para identificar campos
+                if i == 0:
+                    self.log_message(f"🔍 DEBUG - Campos disponibles en factura: {list(invoice.keys())}")
+                    # Buscar campos relacionados con vendedor
+                    vendedor_fields = [k for k in invoice.keys() if 'vend' in k.lower() or 'sell' in k.lower() or 'sales' in k.lower()]
+                    if vendedor_fields:
+                        self.log_message(f"🎯 Campos de vendedor encontrados: {vendedor_fields}")
+                    else:
+                        self.log_message("⚠️  No se encontraron campos obvios de vendedor")
                 
                 # Extraer datos del encabezado con valores por defecto seguros
                 factura_id = invoice.get('id', f'UNKNOWN_{i}')
@@ -1524,15 +1789,62 @@ sin aplicar filtros para probar la conectividad.
                 
                 estado = invoice.get('status', 'unknown')
                 
-                # Agregar encabezado
+                # NUEVOS CAMPOS AGREGADOS - due_date, payment_status, seller_id
+                due_date = invoice.get('due_date', invoice.get('dueDate', ''))
+                
+                # Determinar payment_status basado en estado y fecha de vencimiento
+                payment_status = 'pendiente'  # Valor por defecto
+                if estado in ['closed', 'paid']:
+                    payment_status = 'pagada'
+                elif estado in ['cancelled', 'void']:
+                    payment_status = 'anulada'
+                elif due_date:
+                    from datetime import datetime
+                    try:
+                        # Verificar si está vencida comparando con fecha actual
+                        due_date_obj = datetime.fromisoformat(due_date.replace('Z', ''))
+                        if due_date_obj < datetime.now():
+                            payment_status = 'vencida'
+                    except:
+                        # Si no se puede parsear la fecha, mantener 'pendiente'
+                        pass
+                
+                # Obtener seller/vendedor - revisar diferentes ubicaciones posibles
+                seller_id = ''
+                
+                # Buscar en diferentes campos posibles de la API Siigo
+                if 'vendedor_id' in invoice:
+                    seller_id = invoice.get('vendedor_id', '')
+                elif 'seller_id' in invoice:
+                    seller_id = invoice.get('seller_id', '')
+                elif 'salesperson_id' in invoice:
+                    seller_id = invoice.get('salesperson_id', '')
+                else:
+                    # Buscar en objeto seller si existe
+                    seller = invoice.get('seller', {})
+                    if isinstance(seller, dict):
+                        seller_id = seller.get('id', seller.get('identification', seller.get('vendedor_id', '')))
+                    elif isinstance(seller, str):
+                        seller_id = seller
+                
+                # También verificar en otros campos comunes
+                if not seller_id:
+                    seller_id = invoice.get('salesperson', invoice.get('vendedor', ''))
+                
+                self.log_message(f"🔍 Factura {factura_id}: vendedor_id = '{seller_id}'")
+                
+                # Agregar encabezado con nuevos campos
                 encabezados.append({
                     'factura_id': factura_id,
                     'fecha': fecha,
+                    'due_date': due_date,
                     'cliente_nombre': cliente_nombre,
                     'cliente_nit': cliente_nit,
                     'total': total,
                     'impuestos': impuestos,
-                    'estado': estado
+                    'estado': estado,
+                    'payment_status': payment_status,
+                    'seller_id': seller_id
                 })
                 
                 # Procesar items de la factura con manejo seguro
@@ -1658,7 +1970,6 @@ sin aplicar filtros para probar la conectividad.
             nit (str): NIT del cliente  
             estado (str): Estado (abierta, cerrada, anulada)
         """
-        import pandas as pd  # Importar pandas para ExcelWriter
         
         try:
             self.log_message("🚀 Iniciando exportación de facturas Siigo a Excel...")
