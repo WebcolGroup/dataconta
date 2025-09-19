@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.ui.components.main_window import MainWindow
     from src.ui.adapters.ui_adapters import UIControllerAdapter, BusinessLogicAdapter, MenuActionsAdapter
+    from src.ui.log_widget import LogWidget
 
 __all__ = [
     "MainWindow",
     "UIControllerAdapter", 
     "BusinessLogicAdapter",
-    "MenuActionsAdapter"
+    "MenuActionsAdapter",
+    "LogWidget"
 ]
