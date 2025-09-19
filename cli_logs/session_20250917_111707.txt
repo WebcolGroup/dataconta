@@ -1,2 +1,0 @@
-[2025-09-17 11:17:07] [INFO] Acción usuario: CLI Startup - Usuario inició CLI FREE | user_action=CLI Startup | details=Usuario inició CLI FREE
-[2025-09-17 11:17:07] [INFO] Acción usuario: View Statistics - Usuario consultó estadísticas básicas | user_action=View Statistics | details=Usuario consultó estadísticas básicas
