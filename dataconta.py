@@ -187,9 +187,10 @@ class DataContaMainWindow(QMainWindow):
             )
             print("✅ Señal refresh_kpis_requested conectada")
             
-            dashboard_widget.show_top_clients_requested.connect(
-                self.demo_handler.show_top_clients_demo
-            )
+            # Comentado: Ahora el widget maneja directamente la funcionalidad TOP clientes
+            # dashboard_widget.show_top_clients_requested.connect(
+            #     self.demo_handler.show_top_clients_demo
+            # )
             dashboard_widget.pro_upgrade_requested.connect(
                 self.demo_handler.show_pro_upgrade_demo
             )
@@ -197,9 +198,9 @@ class DataContaMainWindow(QMainWindow):
             # Conectar señal de controlador de vuelta al dashboard
             print("🔗 Conectando señal kpis_calculated...")
             self.controller.kpis_calculated.connect(
-                dashboard_widget.update_kpis
+                lambda kpi_data: self._handle_kpis_update(dashboard_widget, kpi_data)
             )
-            print("✅ Señal kpis_calculated conectada")
+            print("✅ Señal kpis_calculated conectada con manejo inteligente")
         else:
             print("❌ dashboard_widget es None - no se pueden conectar señales")
         
@@ -262,6 +263,21 @@ class DataContaMainWindow(QMainWindow):
         self.log_message("📊 Componentes especializados cargados correctamente")
     
     # ---------- Métodos de Actualización de UI ----------
+    def _handle_kpis_update(self, dashboard_widget, kpi_data: Dict[str, Any]):
+        """Manejar actualización de KPIs con contexto automático vs manual."""
+        try:
+            # Determinar si es carga automática basándose en el estado actual
+            is_auto_load = not hasattr(self, '_kpis_manually_requested')
+            
+            # Actualizar dashboard con o sin mensaje según el contexto
+            dashboard_widget.update_kpis(kpi_data, show_message=not is_auto_load)
+            
+            # Marcar que ya se procesaron KPIs iniciales
+            self._kpis_manually_requested = True
+            
+        except Exception as e:
+            print(f"❌ Error manejando actualización de KPIs: {e}")
+    
     def update_kpis_display(self, kpi_data: Dict[str, Any]):
         """Actualizar KPIs en el dashboard widget."""
         if self.tabs_widget:

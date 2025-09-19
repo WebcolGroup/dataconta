@@ -100,6 +100,9 @@ class FreeGUIController(QObject):
         self._current_kpis: Optional[KPIData] = None
         self._gui_reference = None  # Referencia a la ventana principal
         
+        # Cargar KPIs existentes automáticamente al inicializar
+        self._auto_load_existing_kpis()
+        
         # 🔧 DEBUG: Autenticar al inicializar
         print("🔌 ===== INICIALIZANDO CONTROLADOR =====")
         print(f"📱 Invoice Repository: {type(self._invoice_repository).__name__}")
@@ -564,6 +567,35 @@ class FreeGUIController(QObject):
         except Exception as e:
             self._logger.error(f"❌ Error refrescando KPIs: {e}")
             self.show_error_message(f"❌ Error calculando KPIs reales:\n{str(e)}")
+    
+    def _auto_load_existing_kpis(self) -> None:
+        """Cargar KPIs existentes automáticamente al inicializar (sin mostrar mensajes)."""
+        try:
+            self._logger.info("🔄 Carga automática de KPIs existentes al inicializar")
+            
+            # Usar QTimer para retrasar ligeramente y permitir que la UI se conecte
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(1000, self._perform_auto_kpi_load)
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error en carga automática de KPIs: {e}")
+    
+    def _perform_auto_kpi_load(self) -> None:
+        """Realizar la carga automática de KPIs después del delay."""
+        try:
+            # Intentar cargar KPIs desde el servicio
+            existing_kpis = self._kpi_service.load_existing_kpis()
+            
+            if existing_kpis:
+                self._current_kpis = existing_kpis
+                # Emitir señal sin mostrar mensajes (carga silenciosa)
+                self.kpis_calculated.emit(existing_kpis.to_dict())
+                self._logger.info(f"✅ KPIs cargados automáticamente: ${existing_kpis.ventas_totales:,.2f}")
+            else:
+                self._logger.info("📂 No hay KPIs existentes - se mostrarán valores por defecto")
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error en carga automática de KPIs: {e}")
     
     def load_existing_kpis(self) -> None:
         """Cargar KPIs existentes desde archivos almacenados."""
