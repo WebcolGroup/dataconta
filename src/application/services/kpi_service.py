@@ -89,9 +89,10 @@ class KPIService:
             self._logger.info(f"📊 Calculando KPIs para el año {year}")
             
             # Configurar filtros para el año
+            from datetime import datetime
             filters = InvoiceFilter(
-                fecha_inicio=f"{year}-01-01",
-                fecha_fin=f"{year}-12-31"
+                created_start=datetime(year, 1, 1),
+                created_end=datetime(year, 12, 31)
             )
             
             # Obtener facturas del repositorio

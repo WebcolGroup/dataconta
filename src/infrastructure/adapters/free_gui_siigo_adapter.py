@@ -40,7 +40,7 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                 
                 credentials = APICredentials(
                     username=user,
-                    password=access_key,  # En Siigo, password es el access_key
+                    access_key=access_key,  # Usar el parámetro correcto
                     api_url=api_url,
                     partner_id=partner_id
                 )
@@ -56,7 +56,7 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
             # Payload para obtener token
             auth_payload = {
                 'username': credentials.username,
-                'access_key': credentials.password  # access_key va en password
+                'access_key': credentials.access_key  # Usar access_key correcto
             }
             
             auth_url = f"{credentials.api_url}/auth"
@@ -101,12 +101,22 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                     self._logger.error("❌ No se pudo autenticar con Siigo")
                     return []
             
+            # Convertir campos del filtro estándar a formato FREE GUI
+            fecha_inicio = None
+            fecha_fin = None
+            
+            if filters.created_start:
+                fecha_inicio = filters.created_start.strftime('%Y-%m-%d') if hasattr(filters.created_start, 'strftime') else str(filters.created_start)
+            
+            if filters.created_end:
+                fecha_fin = filters.created_end.strftime('%Y-%m-%d') if hasattr(filters.created_end, 'strftime') else str(filters.created_end)
+            
             encabezados_df, detalle_df = self.download_invoices_dataframes(
-                fecha_inicio=filters.fecha_inicio,
-                fecha_fin=filters.fecha_fin,
-                cliente_id=filters.cliente_id,
-                nit=filters.nit,
-                estado=filters.estado
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                cliente_id=filters.document_id,  # Mapear document_id a cliente_id
+                nit=None,  # No disponible en InvoiceFilter estándar
+                estado=None  # No disponible en InvoiceFilter estándar
             )
             
             if encabezados_df is None or len(encabezados_df) == 0:
@@ -115,13 +125,11 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
             # Convertir DataFrames a objetos Invoice
             invoices = []
             for _, row in encabezados_df.iterrows():
-                # Crear customer
+                # Crear customer usando los campos correctos de la entidad
                 customer = Customer(
-                    id=str(row.get('cliente_nit', '')),
-                    name=row.get('cliente_nombre', 'Sin Nombre'),
                     identification=str(row.get('cliente_nit', '')),
-                    email=row.get('email', ''),
-                    phone=row.get('phone', '')
+                    name=[str(row.get('cliente_nombre', 'Sin Nombre'))],  # Lista de nombres
+                    commercial_name=str(row.get('cliente_nombre', 'Sin Nombre'))
                 )
                 
                 # Obtener items de esta factura desde detalle_df
@@ -138,22 +146,31 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                         )
                         items.append(item)
                 
-                # Crear invoice
+                # Crear invoice con los campos correctos de la entidad
+                from datetime import datetime as dt
+                
+                # Parsear fecha
+                invoice_date = dt.now()  # Default
+                try:
+                    date_str = str(row.get('fecha', ''))
+                    if date_str:
+                        invoice_date = dt.strptime(date_str.split('T')[0], '%Y-%m-%d')
+                except:
+                    pass
+                
                 invoice = Invoice(
                     id=str(row['factura_id']),
-                    date=str(row.get('fecha', '')),
-                    due_date=str(row.get('due_date', '')),
+                    document_id=str(row.get('numero', row['factura_id'])),
+                    number=int(row.get('numero', 0)) if row.get('numero', '').isdigit() else 0,
+                    name=f"Factura {row.get('numero', row['factura_id'])}",
+                    date=invoice_date,
                     customer=customer,
                     items=items,
-                    subtotal=float(row.get('total', 0)) * 0.81,  # Aproximación
-                    total=float(row.get('total', 0)),
-                    status=str(row.get('estado', 'unknown')),
-                    taxes=[]  # Simplificado para FREE
+                    payments=[]  # Vacío por ahora en versión FREE
                 )
                 
-                # Agregar campos adicionales como atributos
-                invoice.payment_status = row.get('payment_status', 'unknown')
-                invoice.seller_id = row.get('seller_id', '')
+                # Agregar total como atributo adicional (no es campo de la entidad pero puede ser útil)
+                invoice.total = float(row.get('total', 0))
                 
                 invoices.append(invoice)
             

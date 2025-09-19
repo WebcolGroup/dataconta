@@ -100,6 +100,24 @@ class FreeGUIController(QObject):
         self._current_kpis: Optional[KPIData] = None
         self._gui_reference = None  # Referencia a la ventana principal
         
+        # 🔧 DEBUG: Autenticar al inicializar
+        print("🔌 ===== INICIALIZANDO CONTROLADOR =====")
+        print(f"📱 Invoice Repository: {type(self._invoice_repository).__name__}")
+        
+        # Intentar autenticación inmediata
+        if hasattr(self._invoice_repository, 'authenticate'):
+            print("🔐 Intentando autenticación automática...")
+            auth_result = self._invoice_repository.authenticate()
+            print(f"🔐 Resultado autenticación: {auth_result}")
+        
+        # Verificar conexión
+        if hasattr(self._invoice_repository, 'is_connected'):
+            connection_status = self._invoice_repository.is_connected()
+            print(f"🌐 Estado conexión: {connection_status}")
+            
+        print("✅ ===== CONTROLADOR INICIALIZADO =====")
+        print()
+        
         self._logger.info("🎮 FreeGUIController inicializado")
     
     def set_gui_reference(self, gui_instance):
@@ -418,9 +436,10 @@ class FreeGUIController(QObject):
                     return
             
             # Cargar datos con filtros básicos
+            from datetime import datetime
             filters = InvoiceFilter(
-                fecha_inicio="2024-01-01",
-                fecha_fin=datetime.now().strftime("%Y-%m-%d")
+                created_start=datetime(2024, 1, 1),
+                created_end=datetime.now()
             )
             
             self._invoices_data = self._invoice_repository.get_invoices(filters)
@@ -511,13 +530,40 @@ class FreeGUIController(QObject):
             self.show_error_message(f"Error mostrando visualizaciones: {e}")
     
     def refresh_kpis(self) -> None:
-        """Refrescar KPIs - alias para calculate_kpis."""
+        """Refrescar KPIs - replicar funcionalidad exacta de dataconta_free_gui.py."""
         try:
-            self._logger.info("🔄 Refrescando KPIs")
-            self.calculate_kpis()
+            self._logger.info("� Calculando KPIs reales desde Siigo API...")
+            
+            # Eliminar archivos JSON de KPIs anteriores (como en FREE GUI)
+            self._delete_old_kpis()
+            
+            # Calcular KPIs usando la misma lógica que FREE GUI
+            kpis_data = self._calculate_real_kpis_like_free_gui()
+            
+            if kpis_data:
+                self._logger.info("✅ KPIs calculados exitosamente, emitiendo señal...")
+                # Emitir señal con los KPIs calculados
+                self.kpis_calculated.emit(kpis_data)
+                self._logger.info("📡 Señal kpis_calculated emitida")
+                
+                # Mostrar mensaje de éxito (como en FREE GUI)
+                success_message = (
+                    f"✅ KPIs calculados y actualizados en dashboard!\n\n"
+                    f"💰 Ventas Totales: ${kpis_data.get('ventas_totales', 0):,.0f}\n"
+                    f"📄 Total Facturas: {kpis_data.get('num_facturas', 0):,}\n"
+                    f"🎯 Ticket Promedio: ${kpis_data.get('ticket_promedio', 0):,.0f}\n"
+                    f"👤 Top Cliente: {kpis_data.get('top_cliente', 'N/A')[:30]}\n\n"
+                    f"📁 KPIs guardados en: outputs/kpis/"
+                )
+                self._logger.info(f"💬 Mostrando mensaje de éxito: {len(success_message)} caracteres")
+                self.show_success_message(success_message)
+            else:
+                self._logger.error("❌ kpis_data es None o vacío")
+                self.show_error_message("❌ Error calculando KPIs reales")
+                
         except Exception as e:
             self._logger.error(f"❌ Error refrescando KPIs: {e}")
-            self.show_error_message(f"Error cargando KPIs: {e}")
+            self.show_error_message(f"❌ Error calculando KPIs reales:\n{str(e)}")
     
     def load_existing_kpis(self) -> None:
         """Cargar KPIs existentes desde archivos almacenados."""
@@ -852,3 +898,177 @@ class FreeGUIController(QObject):
             self._logger.error(f"❌ Error exportando Siigo Excel con filtros: {e}")
             self.show_error_message(f"Error exportando desde API Siigo (Excel): {e}")
             raise
+    
+    # ==================== KPIs Methods (FREE GUI Compatible) ====================
+    
+    def _delete_old_kpis(self) -> None:
+        """Eliminar archivos JSON de KPIs anteriores (replicar FREE GUI)."""
+        try:
+            import os
+            import glob
+            
+            kpis_dir = "outputs/kpis"
+            if os.path.exists(kpis_dir):
+                # Buscar todos los archivos KPIs anteriores
+                pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
+                old_files = glob.glob(pattern)
+                
+                for file_path in old_files:
+                    try:
+                        os.remove(file_path)
+                        self._logger.info(f"🗑️  Archivo KPI antiguo eliminado: {os.path.basename(file_path)}")
+                    except Exception as e:
+                        self._logger.warning(f"⚠️  No se pudo eliminar {file_path}: {e}")
+                        
+                if old_files:
+                    self._logger.info(f"🧹 {len(old_files)} archivos KPI antiguos procesados")
+                    
+        except Exception as e:
+            self._logger.error(f"❌ Error eliminando KPIs antiguos: {e}")
+
+    def _calculate_real_kpis_like_free_gui(self) -> Dict[str, Any]:
+        """Calcular KPIs reales replicando exactamente la lógica de dataconta_free_gui.py."""
+        try:
+            self._logger.info("📊 ===== INICIANDO _calculate_real_kpis_like_free_gui =====")
+            import os
+            import json
+            import pandas as pd
+            from datetime import datetime, date
+            
+            # Configurar rango para año actual (igual que FREE GUI)
+            current_year = date.today().year
+            fecha_inicio = f"{current_year}-01-01"
+            fecha_fin = f"{current_year}-12-31"
+            
+            self._logger.info(f"📊 Calculando KPIs para el año {current_year}...")
+            self._logger.info(f"📅 Rango de fechas: {fecha_inicio} a {fecha_fin}")
+            self._logger.info(f"🔌 Repositorio disponible: {self._invoice_repository is not None}")
+            
+            # Verificar método disponible
+            if hasattr(self._invoice_repository, 'download_invoices_dataframes'):
+                self._logger.info("✅ Método download_invoices_dataframes disponible")
+            else:
+                self._logger.error("❌ Método download_invoices_dataframes NO disponible")
+                return self._get_default_kpis_like_free_gui()
+            
+            # Usar el adaptador FreeGUI para descargar facturas
+            # El adaptador ya maneja la autenticación y descarga
+            self._logger.info("📥 Descargando facturas desde API...")
+            encabezados_df, detalle_df = self._invoice_repository.download_invoices_dataframes(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin
+            )
+            
+            self._logger.info(f"📊 Datos descargados - encabezados_df: {encabezados_df is not None}, detalle_df: {detalle_df is not None}")
+            if encabezados_df is not None:
+                self._logger.info(f"📊 Número de facturas descargadas: {len(encabezados_df)}")
+                self._logger.info(f"📊 Columnas disponibles: {list(encabezados_df.columns) if len(encabezados_df.columns) < 20 else 'Muchas columnas'}")
+            
+            if encabezados_df is None or len(encabezados_df) == 0:
+                self._logger.warning("⚠️  No hay facturas para calcular KPIs")
+                return self._get_default_kpis_like_free_gui()
+            
+            # CALCULAR KPIs EXACTAMENTE COMO EN FREE GUI
+            kpis = {}
+            
+            # 1. Ventas totales = SUM(total)
+            kpis['ventas_totales'] = float(encabezados_df['total'].sum())
+            
+            # 2. Número de facturas emitidas = COUNT(factura_id)
+            kpis['num_facturas'] = len(encabezados_df)
+            
+            # 3. Ticket promedio por factura = SUM(total) / COUNT(factura_id)
+            kpis['ticket_promedio'] = kpis['ventas_totales'] / kpis['num_facturas'] if kpis['num_facturas'] > 0 else 0
+            
+            # 4. Ventas por cliente (CONSOLIDADO POR NIT como en FREE GUI)
+            ventas_consolidadas = encabezados_df.groupby('cliente_nit').agg({
+                'total': 'sum',
+                'cliente_nombre': 'first'
+            }).reset_index()
+            
+            # Limpiar nombres de clientes (igual que FREE GUI)
+            ventas_consolidadas['cliente_display'] = ventas_consolidadas.apply(
+                lambda row: row['cliente_nombre'] if row['cliente_nombre'] != 'Cliente Sin Nombre' 
+                           else f"Cliente NIT: {row['cliente_nit']}", axis=1
+            )
+            
+            # Ordenar por total descendente
+            ventas_por_cliente = ventas_consolidadas.sort_values('total', ascending=False)
+            kpis['ventas_por_cliente'] = ventas_por_cliente.to_dict('records')
+            
+            # Datos adicionales para dashboard (como FREE GUI)
+            if len(ventas_por_cliente) > 0:
+                top_cliente_info = ventas_por_cliente.iloc[0]
+                kpis['top_cliente'] = top_cliente_info['cliente_display']
+                kpis['top_cliente_monto'] = float(top_cliente_info['total'])
+                kpis['top_cliente_nit'] = top_cliente_info['cliente_nit']
+            else:
+                kpis['top_cliente'] = 'N/A'
+                kpis['top_cliente_monto'] = 0
+                
+            kpis['ultima_sync'] = datetime.now().strftime("%H:%M:%S")
+            kpis['estado_sistema'] = 'ACTIVO ✅'
+            
+            # Guardar KPIs en archivo JSON (igual que FREE GUI)
+            self._logger.info("💾 Guardando KPIs en archivo JSON...")
+            self._save_kpis_to_file_like_free_gui(kpis, current_year)
+            self._logger.info("💾 KPIs guardados exitosamente")
+            
+            self._logger.info(f"✅ KPIs calculados: {kpis['num_facturas']} facturas, ${kpis['ventas_totales']:,.0f} en ventas")
+            self._logger.info("✅ ===== FINALIZANDO _calculate_real_kpis_like_free_gui =====")
+            
+            return kpis
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error calculando KPIs: {e}")
+            return self._get_default_kpis_like_free_gui()
+    
+    def _get_default_kpis_like_free_gui(self) -> Dict[str, Any]:
+        """Obtener KPIs por defecto cuando hay error o no hay datos (igual que FREE GUI)."""
+        from datetime import datetime
+        return {
+            'ventas_totales': 0,
+            'num_facturas': 0,
+            'ticket_promedio': 0,
+            'ventas_por_cliente': [],
+            'top_cliente': 'N/A',
+            'top_cliente_monto': 0,
+            'ultima_sync': datetime.now().strftime("%H:%M:%S"),
+            'estado_sistema': 'SIN DATOS ⚠️'
+        }
+    
+    def _save_kpis_to_file_like_free_gui(self, kpis_data: Dict[str, Any], year: int) -> None:
+        """Guardar KPIs en archivo JSON replicando formato de dataconta_free_gui.py."""
+        try:
+            import os
+            import json
+            from datetime import datetime
+            
+            # Crear directorio si no existe
+            kpis_dir = "outputs/kpis"
+            os.makedirs(kpis_dir, exist_ok=True)
+            
+            # Nombre de archivo con timestamp (igual que FREE GUI)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{kpis_dir}/kpis_siigo_{year}_{timestamp}.json"
+            
+            # Agregar metadatos (igual que FREE GUI)
+            kpis_with_meta = {
+                'metadata': {
+                    'generado_en': datetime.now().isoformat(),
+                    'año': year,
+                    'version': 'DataConta Hexagonal v1.0',
+                    'fuente': 'API Siigo'
+                },
+                'kpis': kpis_data
+            }
+            
+            # Guardar archivo
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(kpis_with_meta, f, indent=2, ensure_ascii=False, default=str)
+            
+            file_size = os.path.getsize(filename) / 1024
+            self._logger.info(f"💾 KPIs guardados: {filename} ({file_size:.1f} KB)")
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error guardando KPIs: {e}")

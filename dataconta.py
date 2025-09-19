@@ -4,10 +4,13 @@ DataConta FREE GUI - Versión NO Monolítica con Arquitectura Hexagonal
 Este archivo es ahora el entrypoint canónico con el contenido completo de la versión no monolítica.
 """
 
+# ==================== Imports - Librerías Estándar ====================
 import sys
 import os
 import logging
 from typing import Optional, Dict, Any
+
+# ==================== Imports - PySide6 (Framework UI) ====================
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QFrame, QHBoxLayout, QLabel, QMessageBox, QGraphicsDropShadowEffect
@@ -15,26 +18,31 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont, QColor
 
+# ==================== Imports - Tema Material (Opcional) ====================
 # Tema Material (opcional con fallback)
 try:
     from qt_material import apply_stylesheet
 except Exception:  # pragma: no cover - fallback si no está instalado
     apply_stylesheet = None
 
-# Imports de arquitectura hexagonal
+# ==================== Imports - Arquitectura Hexagonal ====================
 from src.presentation.controllers.free_gui_controller import FreeGUIController
 from src.application.services.kpi_service import KPIService
 from src.application.services.export_service import ExportService
-from src.infrastructure.adapters.siigo_api_adapter import SiigoAPIAdapter
+from src.infrastructure.adapters.free_gui_siigo_adapter import FreeGUISiigoAdapter
 from src.infrastructure.adapters.file_storage_adapter import FileStorageAdapter
 from src.infrastructure.adapters.logger_adapter import LoggerAdapter
 
-# Imports de widgets especializados (NO monolíticos)
+# ==================== Imports - Widgets Especializados (NO monolíticos) ====================
 from src.presentation.widgets.dashboard_widget import DashboardWidget
 from src.presentation.widgets.export_widget import ExportWidget
 from src.presentation.widgets.query_widget import QueryWidget
 from src.presentation.widgets.tabs_widget import TabsWidget
+from src.presentation.widgets.demo_handler_widget import DemoHandlerWidget
+from src.ui.log_widget import LogWidget
 
+
+# ==================== Clase Principal - DataConta Main Window ====================
 
 class DataContaMainWindow(QMainWindow):
     """
@@ -51,6 +59,7 @@ class DataContaMainWindow(QMainWindow):
     - Manejo directo de datos (delegado a servicios)
     """
     
+    # ---------- Constructor y Configuración Inicial ----------
     def __init__(self, controller: FreeGUIController):
         super().__init__()
         self.controller = controller
@@ -59,13 +68,20 @@ class DataContaMainWindow(QMainWindow):
         # Componente de navegación especializado
         self.tabs_widget: Optional[TabsWidget] = None
         
+        # Componente especializado para demos (desacoplamiento completo)
+        self.demo_handler = DemoHandlerWidget(self)
+        
+        # Componente especializado para logs (visualización de actividades)
+        self.log_widget: Optional[LogWidget] = None
+        
         self.init_ui()
         self.setup_window()
         self.connect_signals()
     
+    # ---------- Configuración de Ventana ----------
     def setup_window(self):
         """Configurar ventana principal."""
-        self.setWindowTitle("🆓 DataConta FREE - Análisis Financiero NO Monolítico")
+        self.setWindowTitle("🆓 DataConta FREE - Análisis Financiero y Contable")
         
         # Tamaño dinámico
         screen = QApplication.primaryScreen().geometry()
@@ -90,6 +106,7 @@ class DataContaMainWindow(QMainWindow):
         # Aplicar estilos globales (complementarios al tema Material)
         self.setStyleSheet(self._get_global_styles())
     
+    # ---------- Inicialización de UI ----------
     def init_ui(self):
         """Inicializar interfaz de usuario con componentes especializados."""
         central_widget = QWidget()
@@ -105,7 +122,13 @@ class DataContaMainWindow(QMainWindow):
         self.tabs_widget = TabsWidget()
         tabs_card = self._wrap_in_card(self.tabs_widget)
         main_layout.addWidget(tabs_card)
+        
+        # LogWidget especializado (parte inferior)
+        self.log_widget = LogWidget()
+        log_card = self._wrap_in_card(self.log_widget)
+        main_layout.addWidget(log_card)
     
+    # ---------- Creación de Componentes UI ----------
     def _create_header(self) -> QWidget:
         """Crear header simple y elegante (contenido, sin card externa)."""
         header_frame = QFrame()
@@ -114,7 +137,7 @@ class DataContaMainWindow(QMainWindow):
         header_layout.setContentsMargins(20, 18, 20, 18)
 
         # Título principal
-        title_label = QLabel("🆓 DataConta FREE - Arquitectura No Monolítica")
+        title_label = QLabel("🆓 DataConta FREE ")
         title_label.setObjectName("HeaderTitle")
         title_label.setStyleSheet("""
             color: white;
@@ -123,7 +146,7 @@ class DataContaMainWindow(QMainWindow):
         """)
 
         # Subtítulo
-        subtitle_label = QLabel("📊 Componentes Especializados - Principios SOLID")
+        subtitle_label = QLabel("📊  Análisis Financiero y Contable")
         subtitle_label.setObjectName("HeaderSubtitle")
         subtitle_label.setStyleSheet("""
             color: #E3F2FD;
@@ -149,6 +172,7 @@ class DataContaMainWindow(QMainWindow):
         """)
         return header_frame
     
+    # ---------- Conexión de Signals (Comunicación entre Componentes) ----------
     def connect_signals(self):
         """Conectar signals de los widgets con el controlador."""
         if not self.tabs_widget:
@@ -157,15 +181,27 @@ class DataContaMainWindow(QMainWindow):
         # Dashboard signals
         dashboard_widget = self.tabs_widget.get_dashboard_widget()
         if dashboard_widget:
+            print("🔗 Conectando señales de dashboard...")
             dashboard_widget.refresh_kpis_requested.connect(
                 self.controller.refresh_kpis
             )
+            print("✅ Señal refresh_kpis_requested conectada")
+            
             dashboard_widget.show_top_clients_requested.connect(
-                self._show_top_clients
+                self.demo_handler.show_top_clients_demo
             )
             dashboard_widget.pro_upgrade_requested.connect(
-                self._show_pro_upgrade
+                self.demo_handler.show_pro_upgrade_demo
             )
+            
+            # Conectar señal de controlador de vuelta al dashboard
+            print("🔗 Conectando señal kpis_calculated...")
+            self.controller.kpis_calculated.connect(
+                dashboard_widget.update_kpis
+            )
+            print("✅ Señal kpis_calculated conectada")
+        else:
+            print("❌ dashboard_widget es None - no se pueden conectar señales")
         
         # Export signals
         export_widget = self.tabs_widget.get_export_widget()
@@ -186,7 +222,7 @@ class DataContaMainWindow(QMainWindow):
                 self._handle_siigo_excel_export
             )
             export_widget.test_connection_requested.connect(
-                self._test_siigo_connection
+                self.demo_handler.show_siigo_connection_demo
             )
         
         # Query signals
@@ -209,9 +245,23 @@ class DataContaMainWindow(QMainWindow):
                 self._handle_siigo_excel_export
             )
             siigo_api_widget.test_connection_requested.connect(
-                self._test_siigo_connection
+                self.demo_handler.show_siigo_connection_demo
             )
+        
+        # LogWidget signals (if available)
+        if self.log_widget:
+            self.log_widget.log_cleared.connect(
+                lambda: self.log_message("🗑️ Logs limpiados por usuario")
+            )
+            self.log_widget.log_exported.connect(
+                lambda filepath: self.log_message(f"💾 Logs exportados a: {filepath}")
+            )
+        
+        # Initialize logging with welcome message
+        self.log_message("🆓 DataConta FREE iniciado - Arquitectura NO Monolítica")
+        self.log_message("📊 Componentes especializados cargados correctamente")
     
+    # ---------- Métodos de Actualización de UI ----------
     def update_kpis_display(self, kpi_data: Dict[str, Any]):
         """Actualizar KPIs en el dashboard widget."""
         if self.tabs_widget:
@@ -219,27 +269,12 @@ class DataContaMainWindow(QMainWindow):
             if dashboard_widget:
                 dashboard_widget.update_kpis(kpi_data)
     
+    # ---------- Handlers de Acciones (Delegación a Controlador y Demo Handler) ----------
     def _handle_invoice_search(self, filters: Dict[str, Any]):
         """Manejar búsqueda de facturas."""
         try:
-            # Aquí se llamaría al controlador para buscar facturas
-            # Por ahora, datos demo
-            demo_invoices = [
-                {
-                    "numero": "DEMO-001",
-                    "fecha": "2025-01-18",
-                    "cliente": "Cliente Demo 1",
-                    "monto": 1500000,
-                    "estado": "PAGADA"
-                },
-                {
-                    "numero": "DEMO-002", 
-                    "fecha": "2025-01-17",
-                    "cliente": "Cliente Demo 2",
-                    "monto": 2300000,
-                    "estado": "PENDIENTE"
-                }
-            ]
+            # Delegar al demo handler para obtener datos demo
+            demo_invoices = self.demo_handler.show_invoice_search_demo(filters)
             
             query_widget = self.tabs_widget.get_query_widget() if self.tabs_widget else None
             if query_widget:
@@ -256,7 +291,8 @@ class DataContaMainWindow(QMainWindow):
         if self.tabs_widget:
             query_widget = self.tabs_widget.get_query_widget()
             if query_widget:
-                query_widget.show_success_message("Filtros", "Filtros limpiados correctamente")
+                # Delegar al demo handler para mostrar mensaje
+                self.demo_handler.show_clear_filters_demo()
     
     def _handle_siigo_csv_export(self):
         """Manejar exportación CSV desde Siigo."""
@@ -267,16 +303,11 @@ class DataContaMainWindow(QMainWindow):
             else:
                 self.controller.export_csv_real(100)
             
-            siigo_api_widget = self.tabs_widget.get_siigo_api_widget() if self.tabs_widget else None
-            if siigo_api_widget:
-                siigo_api_widget.show_success_message(
-                    "Éxito", 
-                    "Exportación CSV desde API Siigo completada"
-                )
+            # Delegar demo al handler
+            self.demo_handler.show_export_success_demo("csv")
         except Exception as e:
-            siigo_api_widget = self.tabs_widget.get_siigo_api_widget() if self.tabs_widget else None
-            if siigo_api_widget:
-                siigo_api_widget.show_error_message("Error", str(e))
+            # Delegar error al handler
+            self.demo_handler.show_export_error_demo(str(e))
     
     def _handle_siigo_excel_export(self):
         """Manejar exportación Excel desde Siigo."""
@@ -287,41 +318,13 @@ class DataContaMainWindow(QMainWindow):
             else:
                 self.controller.export_excel_real(100)
             
-            siigo_api_widget = self.tabs_widget.get_siigo_api_widget() if self.tabs_widget else None
-            if siigo_api_widget:
-                siigo_api_widget.show_success_message(
-                    "Éxito", 
-                    "Exportación Excel desde API Siigo completada"
-                )
+            # Delegar demo al handler
+            self.demo_handler.show_export_success_demo("excel")
         except Exception as e:
-            siigo_api_widget = self.tabs_widget.get_siigo_api_widget() if self.tabs_widget else None
-            if siigo_api_widget:
-                siigo_api_widget.show_error_message("Error", str(e))
+            # Delegar error al handler
+            self.demo_handler.show_export_error_demo(str(e))
     
-    def _test_siigo_connection(self):
-        """Probar conexión con Siigo API."""
-        if self.tabs_widget:
-            siigo_api_widget = self.tabs_widget.get_siigo_api_widget()
-            if siigo_api_widget:
-                siigo_api_widget.show_success_message(
-                    "Prueba de Conexión", 
-                    "Conexión con API Siigo verificada correctamente"
-                )
-    
-    def _show_top_clients(self):
-        """Mostrar TOP clientes."""
-        QMessageBox.information(self, "TOP Clientes", 
-                              "🏆 TOP 10 Clientes - Funcionalidad desde widget especializado")
-    
-    def _show_pro_upgrade(self):
-        """Mostrar información de upgrade."""
-        QMessageBox.information(self, "DataConta PRO", 
-                              "🚀 Upgrade desde componente especializado\n\n"
-                              "• Hasta 2,000 facturas procesables\n"
-                              "• Dashboard BI interactivo\n"
-                              "• Arquitectura modular\n"
-                              "• Componentes reutilizables")
-    
+    # ---------- Estilos y Helpers de UI ----------
     def _get_global_styles(self) -> str:
         """Obtener estilos globales de la aplicación."""
         return """
@@ -364,9 +367,26 @@ class DataContaMainWindow(QMainWindow):
             }
         """
     
-
-
-    # ---------- Helpers de UI (cards y sombras) ----------
+    # ---------- Logging Functionality ----------
+    def log_message(self, message: str):
+        """
+        Centralized logging method that sends messages to LogWidget.
+        
+        Args:
+            message (str): The message to log
+        """
+        try:
+            if self.log_widget:
+                self.log_widget.log_message(message)
+            else:
+                # Fallback to console if LogWidget not available
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                print(f"[{timestamp}] {message}")
+        except Exception as e:
+            print(f"Error in log_message: {e}")
+    
+    # ---------- Helper Methods ----------
     def _wrap_in_card(self, inner: QWidget) -> QFrame:
         """Envuelve un widget en una 'card' con esquinas redondeadas y sombra."""
         card = QFrame()
@@ -400,10 +420,10 @@ def create_dataconta_app() -> DataContaMainWindow:
     
     # Crear adaptador de logger (Infrastructure Layer)
     logger = LoggerAdapter(name="dataconta_non_monolithic")
-    logger.info("🏗️ Iniciando DataConta NO Monolítico")
+    logger.info("🏗️ Iniciando DataConta")
     
     # Crear adaptadores de infraestructura
-    siigo_adapter = SiigoAPIAdapter(logger=logger)
+    siigo_adapter = FreeGUISiigoAdapter(logger=logger)
     file_storage = FileStorageAdapter(output_directory="./outputs", logger=logger)
     
     # Crear servicios de aplicación

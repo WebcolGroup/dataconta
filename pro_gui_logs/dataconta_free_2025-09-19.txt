@@ -1,0 +1,10 @@
+[08:21:49] [INFO] ============================================================
+DATACONTA FREE - INICIO DE SESIÓN
+============================================================
+Fecha: 2025-09-19 08:21:49
+Sesión ID: 20250919_082149
+Licencia: 🆓 Gratuita
+Versión: DATACONTA v3.0.0 FREE
+============================================================
+[08:21:49] [INFO] Acción usuario: PRO GUI Startup - Usuario inició GUI PRO
+[08:22:37] [INFO] Acción usuario: PRO GUI Close - Usuario cerró la aplicación PRO
