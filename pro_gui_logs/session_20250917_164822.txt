@@ -1,2 +1,0 @@
-[2025-09-17 16:48:22] [INFO] Acción usuario: PRO GUI Startup - Usuario inició GUI PRO | user_action=PRO GUI Startup | details=Usuario inició GUI PRO
-[2025-09-17 16:48:41] [INFO] Acción usuario: PRO GUI Close - Usuario cerró la aplicación PRO | user_action=PRO GUI Close | details=Usuario cerró la aplicación PRO
