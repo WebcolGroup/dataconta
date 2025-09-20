@@ -33,6 +33,9 @@ from src.infrastructure.adapters.free_gui_siigo_adapter import FreeGUISiigoAdapt
 from src.infrastructure.adapters.file_storage_adapter import FileStorageAdapter
 from src.infrastructure.adapters.logger_adapter import LoggerAdapter
 
+# ==================== Imports - Sistema de Addons ====================
+from src.infrastructure.factories.addon_factory import AddonFactory
+
 # ==================== Imports - Widgets Especializados (NO monolíticos) ====================
 from src.presentation.widgets.dashboard_widget import DashboardWidget
 from src.presentation.widgets.export_widget import ExportWidget
@@ -475,10 +478,12 @@ def create_dataconta_app() -> DataContaMainWindow:
     """
     Factory function para crear la aplicación con arquitectura hexagonal NO monolítica.
     
+    NUEVO: Ahora incluye sistema de addons integrado de forma transparente.
+    
     Implementa inyección de dependencias completa siguiendo principios SOLID.
     
     Returns:
-        DataContaMainWindow: Instancia NO monolítica de la aplicación
+        DataContaMainWindow: Instancia NO monolítica de la aplicación con addons
     """
     # Configurar logging
     logging.basicConfig(level=logging.INFO)
@@ -486,6 +491,35 @@ def create_dataconta_app() -> DataContaMainWindow:
     # Crear adaptador de logger (Infrastructure Layer)
     logger = LoggerAdapter(name="dataconta_non_monolithic")
     logger.info("🏗️ Iniciando DataConta")
+    
+    # ==================== NUEVO: SISTEMA DE ADDONS ====================
+    # Inicializar sistema de addons (completamente opcional y no-invasivo)
+    addon_system = None
+    
+    try:
+        logger.info("🔌 Inicializando sistema de addons...")
+        
+        # Crear sistema de addons usando factory pattern
+        addon_system = AddonFactory.create_complete_addon_system(
+            repository_path="addons/",
+            logger=logger
+        )
+        
+        # Cargar addons disponibles
+        loaded_addons = addon_system.load_all_addons()
+        active_addons = addon_system.get_active_addons()
+        
+        if active_addons:
+            logger.info(f"✅ Sistema de addons inicializado: {len(active_addons)} addons activos")
+            for addon in active_addons:
+                logger.info(f"  📦 {addon.get_name()} v{addon.get_version()}")
+        else:
+            logger.info("ℹ️  Sistema de addons listo (no hay addons instalados)")
+            
+    except Exception as e:
+        logger.warning(f"⚠️  Sistema de addons no disponible: {e}")
+        # Continúa normalmente sin addons - NO es un error crítico
+        addon_system = None
     
     # Crear adaptadores de infraestructura
     siigo_adapter = FreeGUISiigoAdapter(logger=logger)
@@ -516,7 +550,29 @@ def create_dataconta_app() -> DataContaMainWindow:
     # Crear GUI NO monolítica (Presentation Layer)
     main_window = DataContaMainWindow(controller)
     
+    # ==================== NUEVO: INTEGRAR ADDONS CON UI ====================
+    # Vincular sistema de addons con la interfaz (si está disponible)
+    if addon_system:
+        try:
+            # Agregar referencia del addon system a la ventana principal
+            main_window.addon_system = addon_system
+            logger.info("🎛️  Sistema de addons vinculado con interfaz")
+            
+        except Exception as e:
+            logger.warning(f"⚠️  Error integrando addons con UI: {e}")
+    
     logger.info("✅ DataConta NO Monolítico creado exitosamente")
+    
+    # ==================== NUEVO: LOG DE ESTADÍSTICAS ====================
+    if addon_system:
+        active_addons = addon_system.get_active_addons()
+        if active_addons:
+            stats = {
+                'total_addons': len(active_addons),
+                'addon_names': [addon.get_name() for addon in active_addons]
+            }
+            logger.info(f"📊 Estadísticas de addons: {stats}")
+    
     return main_window
 
 
@@ -534,14 +590,15 @@ def main():
             except Exception:
                 # Fallback silencioso si el tema no puede cargarse
                 pass
-        print("🚀 Iniciando DataConta FREE - Versión NO Monolítica")
-        print("=" * 60)
+        print("🚀 Iniciando DataConta FREE - Versión NO Monolítica con Addons")
+        print("=" * 70)
         print("📊 Componentes especializados:")
         print("  • DashboardWidget: UI de KPIs")
         print("  • ExportWidget: UI de exportaciones")  
         print("  • QueryWidget: UI de consultas")
         print("  • MainWindow: Solo coordinación")
-        print("=" * 60)
+        print("  🔌 • Sistema de Addons: Extensibilidad de comunidad")
+        print("=" * 70)
         
         # Crear aplicación NO monolítica
         main_window = create_dataconta_app()

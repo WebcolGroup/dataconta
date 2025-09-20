@@ -1,0 +1,96 @@
+{
+  "name": "email_reports",
+  "display_name": "Email Reports",
+  "version": "1.0.0",
+  "addon_type": "utility",
+  "description": "Envía informes financieros por correo electrónico de forma automatizada",
+  "author": "DataConta Community",
+  "license": "MIT",
+  "homepage": "https://github.com/dataconta/addons/email_reports",
+  "repository": "https://github.com/dataconta/addons",
+  "entry_point": "email_reports_addon.EmailReportsAddon",
+  "requires_license": "PROFESSIONAL",
+  "compatibility": {
+    "min_version": "1.0.0",
+    "max_version": "2.0.0",
+    "platforms": ["windows", "linux", "macos"]
+  },
+  "dependencies": [
+    "smtplib",
+    "email",
+    "ssl",
+    "datetime"
+  ],
+  "permissions": [
+    "email_send",
+    "file_read",
+    "data_export"
+  ],
+  "menu_items": [
+    {
+      "id": "send_daily_report",
+      "label": "Enviar Reporte Diario",
+      "icon": "📧",
+      "action": "send_daily_report",
+      "description": "Envía reporte diario de ventas por email",
+      "requires_confirmation": true
+    },
+    {
+      "id": "send_monthly_report", 
+      "label": "Enviar Reporte Mensual",
+      "icon": "📊",
+      "action": "send_monthly_report",
+      "description": "Envía reporte mensual completo por email",
+      "requires_confirmation": true
+    },
+    {
+      "id": "configure_email",
+      "label": "Configurar Email",
+      "icon": "⚙️", 
+      "action": "configure_email_settings",
+      "description": "Configurar ajustes de correo electrónico",
+      "requires_confirmation": false
+    }
+  ],
+  "configuration_schema": {
+    "smtp_server": {
+      "type": "string",
+      "default": "smtp.gmail.com",
+      "description": "Servidor SMTP para envío de correos"
+    },
+    "smtp_port": {
+      "type": "integer",
+      "default": 587,
+      "description": "Puerto SMTP"
+    },
+    "sender_email": {
+      "type": "string", 
+      "required": true,
+      "description": "Email del remitente"
+    },
+    "sender_password": {
+      "type": "string",
+      "required": true,
+      "sensitive": true,
+      "description": "Contraseña del email remitente"
+    },
+    "recipient_emails": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": [],
+      "description": "Lista de destinatarios"
+    }
+  },
+  "security": {
+    "sandbox": true,
+    "network_access": true,
+    "file_access": "read_only",
+    "checksum": ""
+  },
+  "metadata": {
+    "tags": ["email", "reports", "automation", "professional"],
+    "category": "reporting",
+    "created_date": "2025-09-17",
+    "last_updated": "2025-09-17"
+  }
+}
