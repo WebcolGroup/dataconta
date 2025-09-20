@@ -671,6 +671,8 @@ class InvoiceFilter:
     document_id: Optional[str] = None
     created_start: Optional[datetime] = None
     created_end: Optional[datetime] = None
+    customer_id: Optional[str] = None  # ID del cliente en Siigo
+    status: Optional[str] = None       # Estado de la factura (Active, Paid, etc.)
     page_size: int = 100
     page: int = 1
     
@@ -689,6 +691,12 @@ class InvoiceFilter:
         
         if self.created_end:
             result['created_end'] = self.created_end.isoformat()
+            
+        if self.customer_id:
+            result['customer_id'] = self.customer_id
+            
+        if self.status:
+            result['status'] = self.status
         
         return result
 

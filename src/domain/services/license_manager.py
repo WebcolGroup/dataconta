@@ -58,6 +58,13 @@ class LicenseManager:
             return False
         return self._current_license.can_access_gui()
     
+    def can_access_gui_lite(self) -> bool:
+        """Check if current license allows GUI Lite access (Free gets limited GUI)."""
+        if not self.is_license_valid():
+            return False
+        # FREE license gets GUI Lite, PROFESSIONAL+ gets full GUI
+        return True
+    
     def can_generate_financial_reports(self) -> bool:
         """Check if current license allows financial reports generation."""
         if not self.is_license_valid():
@@ -146,7 +153,7 @@ class LicenseManager:
     def get_max_invoices_for_query(self) -> int:
         """Get maximum invoices allowed for query operations."""
         if not self.is_license_valid():
-            return 100  # Conservative fallback
+            return 500  # FREE license fallback
         return self._current_license.get_max_invoices_query()
     
     def get_max_invoices_for_bi(self) -> Optional[int]:
@@ -223,3 +230,42 @@ class LicenseManager:
             )
         else:
             return "🎉 Tiene acceso completo a todas las funcionalidades Enterprise"
+    
+    def get_blocked_feature_message(self, feature: str) -> str:
+        """Get message for blocked feature with upgrade suggestion."""
+        feature_messages = {
+            "financial_reports": "📊 Informes Financieros disponibles en versión Profesional o Enterprise",
+            "bi_export": "🏢 Business Intelligence disponible en versión Profesional o Enterprise", 
+            "advanced_features": "🚀 Funciones avanzadas disponibles solo en versión Enterprise",
+            "full_gui": "🖥️ GUI completa disponible en versión Profesional o Enterprise"
+        }
+        
+        base_message = feature_messages.get(feature, "🔒 Esta función requiere una licencia superior")
+        upgrade_hint = "\n💡 Actualice su licencia para acceder a esta funcionalidad"
+        
+        return f"{base_message}{upgrade_hint}"
+    
+    def is_gui_lite_mode(self) -> bool:
+        """Check if running in GUI Lite mode (FREE license)."""
+        if not self.is_license_valid():
+            return True  # Default to lite mode if no valid license
+        return self.get_license_type() == LicenseType.FREE
+    
+    def get_free_features_summary(self) -> Dict[str, Any]:
+        """Get summary of features available in FREE license."""
+        return {
+            "cli_access": True,
+            "gui_lite": True,
+            "max_invoices": 500,
+            "csv_export": True,
+            "json_export": True,
+            "basic_stats": True,
+            "api_verification": True,
+            "file_management": True,
+            "blocked_features": {
+                "financial_reports": "Disponible en Profesional+",
+                "bi_export": "Disponible en Profesional+", 
+                "full_gui": "Disponible en Profesional+",
+                "unlimited_invoices": "Disponible en Enterprise"
+            }
+        }

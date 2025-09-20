@@ -1,9 +1,33 @@
 {
+  "license_configurations": {
+    "FREE": {
+      "display_name": "FREE",
+      "max_invoices_query": 500,
+      "max_invoices_bi": 0,
+      "features_enabled": ["invoice_query", "json_export", "csv_export", "basic_stats"],
+      "features_blocked": ["financial_reports", "bi_export", "advanced_dashboard", "ai_analysis"]
+    },
+    "PROFESSIONAL": {
+      "display_name": "PRO",
+      "max_invoices_query": 10000,
+      "max_invoices_bi": 5000,
+      "features_enabled": ["invoice_query", "json_export", "csv_export", "basic_stats", "financial_reports", "bi_export"],
+      "features_blocked": ["advanced_dashboard", "ai_analysis", "multi_company"]
+    },
+    "ENTERPRISE": {
+      "display_name": "ENTERPRISE",
+      "max_invoices_query": -1,
+      "max_invoices_bi": -1,
+      "features_enabled": ["all"],
+      "features_blocked": []
+    }
+  },
   "horizontal_menu": {
     "inicio": {
       "label": "Inicio",
       "icon": "🏠",
       "enabled": true,
+      "license_required": "FREE",
       "submenu": [
         {
           "id": "salir",
@@ -11,7 +35,119 @@
           "icon": "🚪",
           "action": "exit_application",
           "confirmation": "¿Está seguro que desea salir de la aplicación?",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
+        }
+      ]
+    },
+    "consultas": {
+      "label": "Consultas",
+      "icon": "📋",
+      "enabled": true,
+      "license_required": "FREE",
+      "submenu": [
+        {
+          "id": "consultar_facturas",
+          "label": "Consultar Facturas",
+          "icon": "📄",
+          "action": "query_invoices",
+          "enabled": true,
+          "license_required": "FREE"
+        },
+        {
+          "id": "estadisticas_basicas",
+          "label": "Estadísticas Básicas",
+          "icon": "📊",
+          "action": "show_basic_stats",
+          "enabled": true,
+          "license_required": "FREE"
+        }
+      ]
+    },
+    "exportacion": {
+      "label": "Exportación",
+      "icon": "📤",
+      "enabled": true,
+      "license_required": "FREE",
+      "submenu": [
+        {
+          "id": "export_json",
+          "label": "Exportar JSON",
+          "icon": "📄",
+          "action": "export_json",
+          "enabled": true,
+          "license_required": "FREE"
+        },
+        {
+          "id": "export_csv_simple",
+          "label": "Exportar CSV Simple",
+          "icon": "📊",
+          "action": "export_csv_simple",
+          "enabled": true,
+          "license_required": "FREE"
+        },
+        {
+          "id": "export_bi",
+          "label": "Exportación BI",
+          "icon": "🔒",
+          "action": "export_bi",
+          "enabled": false,
+          "locked": true,
+          "license_required": "PROFESSIONAL"
+        }
+      ]
+    },
+    "informes": {
+      "label": "Informes",
+      "icon": "📈",
+      "enabled": false,
+      "locked": true,
+      "license_required": "PROFESSIONAL",
+      "submenu": [
+        {
+          "id": "estado_resultados",
+          "label": "Estado de Resultados",
+          "icon": "🔒",
+          "action": "financial_report_results",
+          "enabled": false,
+          "locked": true,
+          "license_required": "PROFESSIONAL"
+        },
+        {
+          "id": "balance_general",
+          "label": "Balance General",
+          "icon": "🔒",
+          "action": "financial_report_balance",
+          "enabled": false,
+          "locked": true,
+          "license_required": "PROFESSIONAL"
+        }
+      ]
+    },
+    "business_intelligence": {
+      "label": "Business Intelligence",
+      "icon": "🔒",
+      "enabled": false,
+      "locked": true,
+      "license_required": "PROFESSIONAL",
+      "submenu": [
+        {
+          "id": "dashboard_completo",
+          "label": "Dashboard Completo",
+          "icon": "🔒",
+          "action": "show_full_dashboard",
+          "enabled": false,
+          "locked": true,
+          "license_required": "PROFESSIONAL"
+        },
+        {
+          "id": "analisis_predictivo",
+          "label": "Análisis Predictivo",
+          "icon": "🔒",
+          "action": "ai_analysis",
+          "enabled": false,
+          "locked": true,
+          "license_required": "ENTERPRISE"
         }
       ]
     },
@@ -19,27 +155,39 @@
       "label": "Ayuda",
       "icon": "❓",
       "enabled": true,
+      "license_required": "FREE",
       "submenu": [
         {
           "id": "guia_usuario",
           "label": "Guía de usuario",
           "icon": "📖",
           "action": "show_user_guide",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
         },
         {
           "id": "licencia",
           "label": "Licencia",
           "icon": "📄",
           "action": "show_license",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
         },
         {
           "id": "acerca_de",
           "label": "Acerca de",
           "icon": "ℹ️",
           "action": "show_about",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
+        },
+        {
+          "id": "upgrade_info",
+          "label": "Información de Upgrade",
+          "icon": "💼",
+          "action": "show_upgrade_info",
+          "enabled": true,
+          "license_required": "FREE"
         }
       ]
     },
@@ -47,20 +195,23 @@
       "label": "Herramientas",
       "icon": "🔧",
       "enabled": true,
+      "license_required": "FREE",
       "submenu": [
         {
           "id": "configuracion",
           "label": "Configuración",
           "icon": "⚙️",
           "action": "show_settings",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
         },
         {
           "id": "logs",
           "label": "Ver Logs",
           "icon": "📋",
           "action": "show_logs",
-          "enabled": true
+          "enabled": true,
+          "license_required": "FREE"
         }
       ]
     }
@@ -70,30 +221,73 @@
       "type": "system",
       "description": "Cerrar la aplicación"
     },
+    "query_invoices": {
+      "type": "action",
+      "description": "Consultar facturas de venta",
+      "license_required": "FREE"
+    },
+    "show_basic_stats": {
+      "type": "dialog",
+      "title": "Estadísticas Básicas",
+      "license_required": "FREE"
+    },
+    "export_json": {
+      "type": "action",
+      "description": "Exportar facturas a formato JSON",
+      "license_required": "FREE"
+    },
+    "export_csv_simple": {
+      "type": "action",
+      "description": "Exportar facturas a CSV simple",
+      "license_required": "FREE"
+    },
+    "export_bi": {
+      "type": "blocked",
+      "description": "Exportación BI completa",
+      "license_required": "PROFESSIONAL",
+      "upgrade_message": "Funcionalidad disponible en versión PRO"
+    },
+    "financial_report_results": {
+      "type": "blocked",
+      "description": "Estado de Resultados",
+      "license_required": "PROFESSIONAL",
+      "upgrade_message": "Informes financieros disponibles en versión PRO"
+    },
     "show_user_guide": {
       "type": "dialog",
-      "title": "Guía de Usuario",
-      "content": "📖 GUÍA DE USUARIO - DATACONTA\n\n🏢 FUNCIONALIDADES PRINCIPALES:\n\n1. 📊 BUSINESS INTELLIGENCE:\n   - Exportar facturas a formato CSV\n   - Generar tablas dimensionales para análisis\n   - Crear reportes ejecutivos\n\n2. 💰 ESTADO DE RESULTADOS:\n   - Generar estados financieros por período\n   - Análisis de ingresos y gastos\n   - KPIs financieros automáticos\n\n3. 🏦 ESTADO DE SITUACIÓN FINANCIERA:\n   - Balance por fecha de corte\n   - Clasificación de activos, pasivos y patrimonio\n   - Indicadores financieros clave\n\n📋 INSTRUCCIONES DE USO:\n- Seleccione la funcionalidad deseada\n- Configure los parámetros según necesidad\n- Los resultados se guardan en la carpeta 'outputs'\n\n🔧 SOPORTE TÉCNICO:\n- Consulte la documentación técnica\n- Revise los logs de la aplicación"
+      "title": "Guía de Usuario - DATACONTA FREE",
+      "content": "📖 GUÍA DE USUARIO - DATACONTA FREE\\n\\n🆓 FUNCIONALIDADES DISPONIBLES:\\n\\n1. 📋 CONSULTA DE FACTURAS:\\n   - Consultar hasta 500 facturas por búsqueda\\n   - Búsqueda por fechas y filtros básicos\\n   - Visualización de datos en tiempo real\\n\\n2. 📊 ESTADÍSTICAS BÁSICAS:\\n   - Total de facturas consultadas\\n   - Total vendido acumulado\\n   - Número de clientes distintos\\n   - Facturas del mes actual\\n\\n3. � EXPORTACIÓN SIMPLE:\\n   - Exportar facturas a JSON con timestamp\\n   - Exportar facturas a CSV simple\\n   - Archivos guardados en carpeta 'outputs'\\n\\n� FUNCIONES PRO/ENTERPRISE:\\n   - Informes financieros avanzados\\n   - Business Intelligence completo\\n   - Dashboard ejecutivo\\n   - Análisis predictivo con IA\\n\\n💡 ACTUALIZAR: Contacte soporte para upgrade",
+      "license_required": "FREE"
     },
     "show_license": {
       "type": "dialog",
-      "title": "Información de Licencia",
-      "content": "📄 INFORMACIÓN DE LICENCIA - DATACONTA\n\n🏢 Sistema Avanzado de Gestión Empresarial\n\n📋 TÉRMINOS DE USO:\n• Este software está diseñado para integración con API de Siigo\n• Uso exclusivo para análisis financiero y contable\n• Mantiene arquitectura hexagonal y principios SOLID\n\n🔒 LICENCIA ACTUAL: PROFESIONAL\n• Acceso completo a todas las funcionalidades\n• Soporte técnico incluido\n• Actualizaciones automáticas\n\n👨‍💻 DESARROLLADO POR:\n• Arquitectura: Hexagonal (Clean Architecture)\n• Framework GUI: PySide6 (Qt6)\n• Principios: SOLID, Clean Code\n\n📧 CONTACTO Y SOPORTE:\n• Documentación técnica integrada\n• Sistema de logs para diagnóstico\n• Interfaz intuitiva y profesional\n\n© 2025 DATACONTA - Todos los derechos reservados"
+      "title": "Información de Licencia - FREE",
+      "content": "📄 INFORMACIÓN DE LICENCIA - DATACONTA FREE\\n\\n� LICENCIA GRATUITA\\n\\n📋 CARACTERÍSTICAS:\\n• Consulta hasta 500 facturas por búsqueda\\n• Exportación JSON y CSV simple\\n• Estadísticas básicas del negocio\\n• Interfaz gráfica simplificada (GUI Lite)\\n• Logs básicos en archivos TXT\\n\\n� LIMITACIONES:\\n• Sin informes financieros avanzados\\n• Sin exportación BI completa\\n• Sin dashboard ejecutivo\\n• Sin análisis predictivo\\n\\n� VERSIONES DISPONIBLES:\\n• 🆓 FREE: Funcionalidades básicas\\n• 💼 PROFESIONAL: Informes + BI limitado\\n• 🏢 ENTERPRISE: Funcionalidades completas\\n\\n📧 CONTACTO:\\n• Soporte técnico incluido\\n• Documentación integrada\\n• Upgrade disponible\\n\\n© 2025 DATACONTA FREE",
+      "license_required": "FREE"
     },
     "show_about": {
       "type": "dialog",
-      "title": "Acerca de DATACONTA",
-      "content": "🏢 DATACONTA v2.0\n\n🎯 SISTEMA AVANZADO DE GESTIÓN EMPRESARIAL\n\n✨ CARACTERÍSTICAS:\n• Interfaz gráfica moderna con PySide6\n• Arquitectura hexagonal (Clean Architecture)\n• Integración completa con API de Siigo\n• Reportes financieros automatizados\n• Business Intelligence integrado\n\n🛠️ TECNOLOGÍAS:\n• Python 3.11+\n• PySide6 (Qt6)\n• Arquitectura Hexagonal\n• Principios SOLID\n• Clean Code\n\n📅 Versión: 2.0.0\n📍 Build: 2025.09.17\n\n© 2025 - Todos los derechos reservados"
+      "title": "Acerca de DATACONTA FREE",
+      "content": "� DATACONTA FREE v3.0\\n\\n🎯 SISTEMA BÁSICO DE GESTIÓN EMPRESARIAL\\n\\n✨ CARACTERÍSTICAS FREE:\\n• Interfaz gráfica simplificada (GUI Lite)\\n• Arquitectura hexagonal (Clean Architecture)\\n• Integración básica con API de Siigo\\n• Estadísticas y métricas esenciales\\n• Exportación JSON y CSV\\n\\n🛠️ TECNOLOGÍAS:\\n• Python 3.11+\\n• PySide6 (Qt6) - GUI Lite\\n• Arquitectura Hexagonal\\n• Principios SOLID\\n• Clean Code\\n\\n🆓 Versión: FREE 3.0.0\\n📍 Build: 2025.09.17\\n🔢 Límite: 500 facturas por consulta\\n\\n💡 ¿Necesita más? Actualice a PRO o ENTERPRISE\\n\\n© 2025 - Versión Gratuita",
+      "license_required": "FREE"
+    },
+    "show_upgrade_info": {
+      "type": "dialog",
+      "title": "Información de Upgrade",
+      "content": "💼 ACTUALIZAR DATACONTA\\n\\n🆓 ➔ 💼 PROFESIONAL:\\n• Informes financieros completos\\n• Exportación BI (hasta 5,000 facturas)\\n• Dashboard avanzado\\n• Consultas hasta 10,000 facturas\\n• Soporte prioritario\\n\\n💼 ➔ 🏢 ENTERPRISE:\\n• Todas las funciones PRO\\n• Sin límites de facturas\\n• Análisis predictivo con IA\\n• Multi-empresa\\n• Integración avanzada\\n• Soporte 24/7\\n\\n📧 CONTACTO:\\n• Email: soporte@dataconta.com\\n• Teléfono: +1-800-DATACONTA\\n• Web: www.dataconta.com/upgrade\\n\\n💰 PROMOCIÓN ESPECIAL:\\n20% descuento en primer año al upgrade",
+      "license_required": "FREE"
     },
     "show_settings": {
       "type": "dialog",
-      "title": "Configuración",
-      "content": "⚙️ CONFIGURACIÓN DEL SISTEMA\n\n🔧 CONFIGURACIONES DISPONIBLES:\n\n• Variables de entorno (.env)\n• Configuración de API de Siigo\n• Rutas de archivos de salida\n• Niveles de logging\n• Formatos de exportación\n\n📝 NOTA:\nLas configuraciones se gestionan a través del archivo .env\nPara cambios avanzados, consulte la documentación técnica."
+      "title": "Configuración - FREE",
+      "content": "⚙️ CONFIGURACIÓN DEL SISTEMA FREE\\n\\n🔧 CONFIGURACIONES DISPONIBLES:\\n\\n• Variables de entorno (.env)\\n• Configuración básica de API de Siigo\\n• Rutas de archivos de salida\\n• Niveles de logging básico\\n• Formato de exportación JSON/CSV\\n\\n📝 LIMITACIONES FREE:\\n• Configuración avanzada no disponible\\n• Sin configuración multi-empresa\\n• Sin configuración de IA\\n\\n📁 ARCHIVOS:\\n• Configuración: .env\\n• Logs: logs/dataconta_free_*.txt\\n• Salidas: outputs/*.json, *.csv\\n\\n💡 Configuración avanzada disponible en PRO",
+      "license_required": "FREE"
     },
     "show_logs": {
       "type": "dialog",
-      "title": "Logs del Sistema",
-      "content": "📋 SISTEMA DE LOGS\n\n📁 UBICACIONES DE LOGS:\n• Logs de aplicación: app.log\n• Logs de consola: Ventana de salida\n• Logs de API: Incluidos en app.log\n\n🔍 NIVELES DE LOG:\n• INFO: Información general\n• WARNING: Advertencias\n• ERROR: Errores del sistema\n• DEBUG: Información detallada\n\n💡 RECOMENDACIÓN:\nRevise los logs en caso de errores o comportamiento inesperado."
+      "title": "Logs del Sistema - FREE",
+      "content": "📋 SISTEMA DE LOGS FREE\\n\\n📁 UBICACIONES DE LOGS:\\n• Logs diarios: logs/dataconta_free_YYYY-MM-DD.txt\\n• Logs de sesión: logs/session_YYYYMMDD_HHMMSS.txt\\n• Logs de aplicación: app.log (básico)\\n\\n🔍 INFORMACIÓN REGISTRADA:\\n• INFO: Operaciones exitosas\\n• WARNING: Advertencias del sistema\\n• ERROR: Errores y fallos\\n• SUCCESS: Operaciones completadas\\n\\n� DATOS TRACKEADOS:\\n• Consultas de facturas realizadas\\n• Exportaciones ejecutadas\\n• Validaciones de licencia\\n• Acciones del usuario\\n\\n💡 Logging avanzado disponible en PRO",
+      "license_required": "FREE"
     }
   }
 }
