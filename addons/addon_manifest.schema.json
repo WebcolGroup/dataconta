@@ -1,0 +1,256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataConta Addon Manifest",
+  "description": "Schema de validación para manifiestos de addons de DataConta",
+  "type": "object",
+  "required": [
+    "name",
+    "version", 
+    "description",
+    "author",
+    "addon_type",
+    "entry_point",
+    "min_dataconta_version"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,49}$",
+      "description": "Nombre único del addon (snake_case, 3-50 chars)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$",
+      "description": "Versión semántica del addon (e.g., 1.0.0, 1.2.3-beta)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Descripción del addon"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100,
+      "description": "Autor del addon"
+    },
+    "addon_type": {
+      "type": "string",
+      "enum": [
+        "ui_extension",
+        "data_processor", 
+        "exporter",
+        "integration",
+        "analytics",
+        "notification",
+        "security",
+        "utility"
+      ],
+      "description": "Tipo de addon"
+    },
+    "entry_point": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*$",
+      "description": "Punto de entrada del addon (module.ClassName)"
+    },
+    "min_dataconta_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versión mínima requerida de DataConta"
+    },
+    "max_dataconta_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versión máxima soportada de DataConta (opcional)"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9_-]+(>=|<=|==|~=|!=)?[0-9.]*$"
+      },
+      "maxItems": 20,
+      "description": "Dependencias Python requeridas"
+    },
+    "requires_license": {
+      "type": "string",
+      "enum": ["FREE", "PROFESSIONAL", "ENTERPRISE"],
+      "default": "FREE",
+      "description": "Nivel de licencia mínimo requerido"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "file_read",
+          "file_write", 
+          "api_access",
+          "network_access",
+          "system_info",
+          "ui_modify",
+          "menu_add",
+          "data_export",
+          "data_import",
+          "email_send",
+          "notification_send"
+        ]
+      },
+      "uniqueItems": true,
+      "maxItems": 10,
+      "description": "Permisos requeridos por el addon"
+    },
+    "menu_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "action"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{2,49}$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "icon": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "file",
+              "edit", 
+              "view",
+              "tools",
+              "export",
+              "import",
+              "help"
+            ]
+          },
+          "shortcut": {
+            "type": "string",
+            "pattern": "^(Ctrl|Alt|Shift)\\+[A-Z0-9]$"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "maxItems": 10,
+      "description": "Items de menú a agregar"
+    },
+    "ui_components": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "maxItems": 5,
+      "description": "Componentes UI a registrar"
+    },
+    "license": {
+      "type": "string",
+      "enum": [
+        "MIT",
+        "GPL-3.0",
+        "GPL-2.0", 
+        "LGPL-3.0",
+        "Apache-2.0",
+        "BSD-3-Clause",
+        "BSD-2-Clause",
+        "Proprietary"
+      ],
+      "default": "MIT",
+      "description": "Licencia del addon"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 20
+      },
+      "maxItems": 10,
+      "uniqueItems": true,
+      "description": "Palabras clave para buscar el addon"
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL del sitio web del addon"
+    },
+    "repository": {
+      "type": "string", 
+      "format": "uri",
+      "description": "URL del repositorio del código fuente"
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Configuración por defecto del addon",
+      "maxProperties": 20
+    },
+    "supported_platforms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["windows", "linux", "macos", "all"]
+      },
+      "default": ["all"],
+      "description": "Plataformas soportadas"
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "sandbox": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ejecutar addon en sandbox de seguridad"
+        },
+        "trusted": {
+          "type": "boolean", 
+          "default": false,
+          "description": "Addon confiable (skip algunas validaciones)"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "Checksum SHA256 del addon"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "python_version": {
+          "type": "string",
+          "pattern": "^>=?\\d+\\.\\d+$",
+          "default": ">=3.7",
+          "description": "Versión mínima de Python requerida"
+        },
+        "pyside_version": {
+          "type": "string", 
+          "pattern": "^>=?\\d+\\.\\d+$",
+          "description": "Versión mínima de PySide6 requerida"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Metadata adicional libre",
+      "maxProperties": 10
+    }
+  },
+  "additionalProperties": false
+}
