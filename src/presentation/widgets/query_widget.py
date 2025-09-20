@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel,
     QPushButton, QFrame, QDateEdit, QLineEdit, QComboBox, QTableWidget,
-    QTableWidgetItem, QAbstractItemView, QHeaderView, QMessageBox, QGraphicsDropShadowEffect
+    QTableWidgetItem, QAbstractItemView, QHeaderView, QMessageBox, QGraphicsDropShadowEffect,
+    QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QFont, QColor
@@ -31,19 +32,65 @@ class QueryWidget(QWidget):
     # Signals para comunicación con el controlador
     search_invoices_requested = Signal(dict)  # filters
     clear_filters_requested = Signal()
+    load_statuses_requested = Signal()   # Solicitar carga de estados
     
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.date_start: Optional[QDateEdit] = None
         self.date_end: Optional[QDateEdit] = None
         self.client_filter: Optional[QLineEdit] = None
+        self.customer_id_input: Optional[QLineEdit] = None   # Campo de texto para ID cliente
+        self.status_combo: Optional[QComboBox] = None       # Dropdown de estados
         self.results_table: Optional[QTableWidget] = None
         self.init_ui()
         self.setup_default_dates()
     
     def init_ui(self):
         """Inicializar interfaz de consultas."""
-        layout = QVBoxLayout(self)
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        
+        # Crear scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                background-color: #f1f1f1;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #c1c1c1;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #a8a8a8;
+            }
+            QScrollBar:horizontal {
+                background-color: #f1f1f1;
+                height: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: #c1c1c1;
+                border-radius: 6px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: #a8a8a8;
+            }
+        """)
+        
+        # Widget contenedor para el contenido scrolleable
+        scroll_content = QWidget()
+        layout = QVBoxLayout(scroll_content)
 
         # Sección de filtros (card)
         filters = self.create_filters_section()
@@ -56,12 +103,37 @@ class QueryWidget(QWidget):
         # Tabla de resultados (card)
         results = self.create_results_table()
         layout.addWidget(self._wrap_in_card(results))
+        
+        # Configurar scroll area
+        scroll_area.setWidget(scroll_content)
+        main_layout.addWidget(scroll_area)
     
     def create_filters_section(self) -> QWidget:
         """Crear sección de filtros de búsqueda (devuelve contenedor)."""
         filters_group = QGroupBox("🔍 Consulta de Facturas - Versión FREE")
-        filters_group.setStyleSheet("QGroupBox{ border: none; font-weight: 700; }")
+        filters_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 700;
+                font-size: 14px;
+                color: #2c3e50;
+                padding-top: 10px;
+                margin-top: 10px;
+                border: 2px solid #bdc3c7;
+                border-radius: 8px;
+                background-color: #f8f9fa;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+                background-color: #f8f9fa;
+                color: #2980b9;
+                font-weight: bold;
+            }
+        """)
         filters_layout = QGridLayout(filters_group)
+        filters_layout.setContentsMargins(15, 20, 15, 15)  # left, top, right, bottom
+        filters_layout.setSpacing(10)  # Espacio entre elementos
         
         # Filtros de fecha
         filters_layout.addWidget(QLabel("📅 Fecha Inicio:"), 0, 0)
@@ -76,12 +148,26 @@ class QueryWidget(QWidget):
         self.date_end.setCalendarPopup(True)
         filters_layout.addWidget(self.date_end, 0, 3)
         
-        # Filtro de cliente
-        filters_layout.addWidget(QLabel("🏢 Cliente:"), 1, 0)
+        # Filtro de cliente (texto libre - mantener compatibilidad)
+        filters_layout.addWidget(QLabel("🏢 Cliente (texto):"), 1, 0)
         self.client_filter = QLineEdit()
         self.client_filter.setToolTip(self._get_client_filter_tooltip())
         self.client_filter.setPlaceholderText("Ingrese nombre del cliente")
         filters_layout.addWidget(self.client_filter, 1, 1)
+        
+        # Filtro de cliente específico (por ID de texto)
+        filters_layout.addWidget(QLabel("👤 Cliente ID:"), 1, 2)
+        self.customer_id_input = QLineEdit()
+        self.customer_id_input.setToolTip(self._get_customer_id_tooltip())
+        self.customer_id_input.setPlaceholderText("ID del cliente (opcional)")
+        filters_layout.addWidget(self.customer_id_input, 1, 3)
+        
+        # Filtro de estado de factura
+        filters_layout.addWidget(QLabel("📄 Estado:"), 2, 0)
+        self.status_combo = QComboBox()
+        self.status_combo.setToolTip(self._get_status_filter_tooltip())
+        self.status_combo.addItem("Todos los Estados", "")
+        filters_layout.addWidget(self.status_combo, 2, 1)
         
         return filters_group
     
@@ -118,6 +204,13 @@ class QueryWidget(QWidget):
         self.results_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.results_table.setShowGrid(False)
         self.results_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
+        # Establecer tamaño mínimo y política de expansión
+        self.results_table.setMinimumHeight(200)
+        self.results_table.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding
+        )
 
         # Headers y dimensiones
         h_header = self.results_table.horizontalHeader()
@@ -142,6 +235,16 @@ class QueryWidget(QWidget):
             self.date_start.setDate(QDate.currentDate().addDays(-30))
             # Fecha fin: hoy
             self.date_end.setDate(QDate.currentDate())
+        
+        self._logger_message("📅 Fechas por defecto configuradas")
+        
+    def request_initial_data(self):
+        """Solicitar carga inicial de datos (debe llamarse después de conectar señales)."""
+        self._logger_message("🔄 Solicitando carga de estados...")
+        self._logger_message(f"🔍 Status combo inicializado: {self.status_combo is not None}")
+        if self.status_combo:
+            self._logger_message(f"📊 Estado combo actual: {self.status_combo.count()} elementos")
+        self.load_statuses_requested.emit()
     
     def _setup_default_table(self):
         """Configurar tabla con estructura por defecto."""
@@ -191,6 +294,14 @@ class QueryWidget(QWidget):
         
         if self.client_filter and self.client_filter.text().strip():
             filters['cliente'] = self.client_filter.text().strip()
+            
+        # Filtro por ID de cliente específico (campo de texto)
+        if self.customer_id_input and self.customer_id_input.text().strip():
+            filters['customer_id'] = self.customer_id_input.text().strip()
+            
+        # Nuevo: Filtro por estado de factura
+        if self.status_combo and self.status_combo.currentData():
+            filters['status'] = self.status_combo.currentData()
         
         return filters
     
@@ -204,6 +315,14 @@ class QueryWidget(QWidget):
         
         if self.client_filter:
             self.client_filter.clear()
+            
+        # Limpiar campo de ID de cliente
+        if self.customer_id_input:
+            self.customer_id_input.clear()
+            
+        # Limpiar combo de estado
+        if self.status_combo:
+            self.status_combo.setCurrentIndex(0)  # "Todos los Estados"
         
         # Limpiar tabla
         self._show_empty_table_message()
@@ -294,12 +413,64 @@ class QueryWidget(QWidget):
     def _get_client_filter_tooltip(self) -> str:
         """Tooltip para filtro de cliente."""
         return (
-            "💼 Filtro por nombre de cliente:\n"
+            "💼 Filtro por nombre de cliente (búsqueda de texto):\n"
             "• Escriba el nombre completo o parcial\n"
             "• Búsqueda no sensible a mayúsculas\n"
             "• Ejemplo: 'Acme Corp' o 'acme'\n\n"
             "🔍 Búsqueda inteligente de clientes"
         )
+    
+    def _get_customer_id_tooltip(self) -> str:
+        """Tooltip para filtro de ID de cliente específico."""
+        return (
+            "🆔 Filtro por ID de cliente específico:\n"
+            "• Ingrese el ID interno del cliente\n"
+            "• Campo opcional para búsqueda exacta\n"
+            "• Ejemplo: '380d1165-503b-49d6-ad70-973e1723a41a'\n\n"
+            "🎯 Búsqueda precisa por ID de cliente"
+        )
+    
+    def _get_status_filter_tooltip(self) -> str:
+        """Tooltip para filtro de estado de factura."""
+        return (
+            "📋 Filtro por estado de factura:\n"
+            "• Abierta: Factura activa/pendiente\n"
+            "• Cerrada: Factura finalizada/pagada\n"
+            "• Anulada: Factura cancelada\n"
+            "• Todos: Sin filtro de estado\n\n"
+            "🔄 Estados según API Siigo"
+        )
+    
+    def update_statuses(self, statuses: List[Dict[str, str]]):
+        """Actualizar lista de estados en el combo desde el controlador."""
+        try:
+            if not self.status_combo:
+                self._logger_message("❌ status_combo no está inicializado")
+                return
+                
+            self._logger_message(f"🔄 Recibidos {len(statuses)} estados para cargar")
+            
+            # Limpiar combo actual
+            self.status_combo.clear()
+            
+            # Agregar estados con debug
+            for status in statuses:
+                label = status.get('label', 'Sin Nombre')
+                value = status.get('value', '')
+                self.status_combo.addItem(label, value)
+                self._logger_message(f"   + Estado agregado: {label} = {value}")
+            
+            self._logger_message(f"✅ Cargados {len(statuses)} estados en dropdown")
+            self._logger_message(f"📊 Total elementos en combo: {self.status_combo.count()}")
+            
+        except Exception as e:
+            self._logger_message(f"❌ Error actualizando estados: {e}")
+            import traceback
+            self._logger_message(f"📋 Traceback: {traceback.format_exc()}")
+    
+    def _logger_message(self, message: str):
+        """Helper para logging (por ahora print, después se puede conectar al logger)."""
+        print(f"[QueryWidget] {message}")
     
     def _get_search_button_style(self) -> str:
         """Estilo para botón de búsqueda."""

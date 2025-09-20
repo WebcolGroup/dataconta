@@ -8,8 +8,9 @@ import os
 import requests
 import pandas as pd
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Callable
 from dotenv import load_dotenv
+from functools import wraps
 
 from src.application.ports.interfaces import InvoiceRepository, APIClient, Logger
 from src.domain.entities.invoice import Invoice, InvoiceFilter, Customer, InvoiceItem, APICredentials
@@ -22,6 +23,7 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
         self._logger = logger
         self._access_token: Optional[str] = None
         self._is_authenticated = False
+        self._safety_callback: Optional[Callable] = None  # Callback para confirmar operaciones peligrosas
         load_dotenv()
     
     def authenticate(self, credentials: Optional[APICredentials] = None) -> bool:
@@ -114,9 +116,9 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
             encabezados_df, detalle_df = self.download_invoices_dataframes(
                 fecha_inicio=fecha_inicio,
                 fecha_fin=fecha_fin,
-                cliente_id=filters.document_id,  # Mapear document_id a cliente_id
-                nit=None,  # No disponible en InvoiceFilter estándar
-                estado=None  # No disponible en InvoiceFilter estándar
+                cliente_id=filters.customer_id,  # Usar nuevo campo customer_id
+                nit=filters.document_id,  # Mantener document_id como NIT por compatibilidad
+                estado=filters.status  # Usar nuevo campo status
             )
             
             if encabezados_df is None or len(encabezados_df) == 0:
@@ -137,11 +139,13 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                 if detalle_df is not None and len(detalle_df) > 0:
                     factura_items = detalle_df[detalle_df['factura_id'] == row['factura_id']]
                     for _, item_row in factura_items.iterrows():
+                        # Usar Decimal para mantener consistencia de tipos
+                        from decimal import Decimal
                         item = InvoiceItem(
                             code=str(item_row.get('producto_codigo', '')),
                             description=str(item_row.get('producto_nombre', '')),
-                            quantity=float(item_row.get('cantidad', 0)),
-                            price=float(item_row.get('precio_unitario', 0)),
+                            quantity=Decimal(str(item_row.get('cantidad', 0))),
+                            price=Decimal(str(item_row.get('precio_unitario', 0))),
                             taxes=[]  # Simplificado para FREE
                         )
                         items.append(item)
@@ -169,8 +173,13 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                     payments=[]  # Vacío por ahora en versión FREE
                 )
                 
-                # Agregar total como atributo adicional (no es campo de la entidad pero puede ser útil)
-                invoice.total = float(row.get('total', 0))
+                # Agregar total como Decimal para mantener consistencia de tipos
+                try:
+                    from decimal import Decimal
+                    total_value = row.get('total', 0)
+                    invoice.total = Decimal(str(total_value)) if total_value else Decimal('0.00')
+                except:
+                    invoice.total = Decimal('0.00')
                 
                 invoices.append(invoice)
             
@@ -428,3 +437,288 @@ class FreeGUISiigoAdapter(InvoiceRepository, APIClient):
                 return invoice
         
         return None
+    
+    def get_customers(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Obtener lista de clientes desde API de Siigo para poblar dropdown.
+        
+        Args:
+            limit: Máximo número de clientes a obtener (por limitaciones FREE)
+            
+        Returns:
+            Lista de diccionarios con id, name e identification de clientes
+        """
+        try:
+            if not self.is_connected():
+                if not self.authenticate():
+                    self._logger.error("❌ No se pudo autenticar con Siigo")
+                    return []
+            
+            api_url = os.getenv('SIIGO_API_URL', 'https://api.siigo.com')
+            partner_id = os.getenv('PARTNER_ID', 'SandboxSiigoAPI')
+            
+            headers = {
+                'Authorization': f'Bearer {self._access_token}',
+                'Partner-Id': partner_id,
+                'Content-Type': 'application/json'
+            }
+            
+            # Parámetros para obtener clientes
+            params = {
+                'page': 1,
+                'page_size': min(limit, 100)  # API Siigo máximo 100 por página
+            }
+            
+            url = f"{api_url}/v1/customers"
+            self._logger.info(f"📡 GET {url} - Obteniendo clientes...")
+            
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                
+                # Formatear datos para el dropdown
+                customers = []
+                for customer in results:
+                    customer_dict = {
+                        'id': str(customer.get('id', '')),
+                        'name': customer.get('name', ['Sin Nombre'])[0] if isinstance(customer.get('name'), list) else str(customer.get('name', 'Sin Nombre')),
+                        'identification': str(customer.get('identification', ''))
+                    }
+                    customers.append(customer_dict)
+                
+                self._logger.info(f"✅ Obtenidos {len(customers)} clientes desde Siigo")
+                return customers
+                
+            else:
+                self._logger.error(f"❌ Error obteniendo clientes: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error en get_customers: {e}")
+            return []
+    
+    def get_invoice_statuses(self) -> List[Dict[str, str]]:
+        """
+        Obtener estados disponibles para facturas según API Siigo.
+        
+        Returns:
+            Lista de diccionarios con value y label para dropdown de estados
+        """
+        try:
+            # Estados basados en la documentación de Siigo API
+            statuses = [
+                {'value': '', 'label': 'Todos los Estados'},
+                {'value': 'open', 'label': '🔓 Abierta'},
+                {'value': 'closed', 'label': '🔒 Cerrada'},
+                {'value': 'cancelled', 'label': '❌ Anulada'}
+            ]
+            
+            self._logger.info(f"📋 Estados de factura disponibles: {len(statuses)-1}")
+            return statuses
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error obteniendo estados: {e}")
+            return [{'value': '', 'label': 'Todos los Estados'}]
+    
+    # ==================== Sistema de Seguridad API ====================
+    
+    def set_safety_callback(self, callback: Callable) -> None:
+        """
+        Establecer callback para confirmar operaciones peligrosas.
+        
+        Args:
+            callback: Función que recibe (method, url, data) y retorna bool
+        """
+        self._safety_callback = callback
+        self._logger.info("🛡️ Sistema de seguridad API activado")
+    
+    def _is_dangerous_operation(self, method: str) -> bool:
+        """
+        Determinar si una operación HTTP es peligrosa y requiere confirmación.
+        
+        Args:
+            method: Método HTTP (GET, POST, PUT, PATCH, DELETE)
+            
+        Returns:
+            bool: True si la operación es peligrosa
+        """
+        dangerous_methods = ['POST', 'PUT', 'PATCH', 'DELETE']
+        return method.upper() in dangerous_methods
+    
+    def _require_user_confirmation(self, method: str, url: str, data: Dict[str, Any] = None) -> bool:
+        """
+        Solicitar confirmación del usuario para operaciones peligrosas.
+        
+        Args:
+            method: Método HTTP
+            url: URL del endpoint
+            data: Datos a enviar
+            
+        Returns:
+            bool: True si el usuario confirma, False si cancela
+        """
+        try:
+            if not self._safety_callback:
+                self._logger.warning("⚠️ Sistema de seguridad no configurado, bloqueando operación peligrosa")
+                return False
+            
+            # Log de la operación peligrosa detectada
+            self._logger.warning(f"🚨 Operación peligrosa detectada: {method} {url}")
+            
+            # Llamar al callback de confirmación
+            user_approved = self._safety_callback(method, url, data or {})
+            
+            if user_approved:
+                self._logger.info(f"✅ Usuario aprobó operación: {method} {url}")
+                return True
+            else:
+                self._logger.info(f"❌ Usuario rechazó operación: {method} {url}")
+                return False
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error en confirmación de seguridad: {e}")
+            return False
+    
+    def _safe_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """
+        Realizar request HTTP con verificación de seguridad.
+        
+        Args:
+            method: Método HTTP
+            url: URL del endpoint
+            **kwargs: Argumentos para requests
+            
+        Returns:
+            requests.Response: Respuesta HTTP
+            
+        Raises:
+            PermissionError: Si la operación es rechazada por el usuario
+            Exception: Otros errores de la request
+        """
+        # Verificar si es una operación peligrosa
+        if self._is_dangerous_operation(method):
+            # Extraer datos del payload
+            payload = kwargs.get('json', kwargs.get('data', {}))
+            
+            # Solicitar confirmación del usuario
+            if not self._require_user_confirmation(method, url, payload):
+                raise PermissionError(f"Operación {method} {url} rechazada por el usuario")
+            
+            # Log de operación autorizada
+            self._logger.info(f"🔓 Ejecutando operación autorizada: {method} {url}")
+        
+        # Ejecutar la request
+        method_map = {
+            'GET': requests.get,
+            'POST': requests.post,
+            'PUT': requests.put,
+            'PATCH': requests.patch,
+            'DELETE': requests.delete
+        }
+        
+        request_func = method_map.get(method.upper())
+        if not request_func:
+            raise ValueError(f"Método HTTP no soportado: {method}")
+        
+        return request_func(url, **kwargs)
+    
+    # ==================== Métodos de API Seguros ====================
+    
+    def safe_create_invoice(self, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Crear factura con confirmación de seguridad.
+        
+        Args:
+            invoice_data: Datos de la factura a crear
+            
+        Returns:
+            Dict con la respuesta de la API
+        """
+        try:
+            if not self._is_authenticated:
+                raise Exception("No autenticado con Siigo API")
+            
+            url = f"{os.getenv('SIIGO_API_URL')}/v1/invoices"
+            headers = self._get_headers()
+            
+            response = self._safe_request('POST', url, json=invoice_data, headers=headers, timeout=30)
+            
+            if response.status_code == 201:
+                self._logger.info(f"✅ Factura creada exitosamente")
+                return response.json()
+            else:
+                raise Exception(f"Error creando factura: {response.status_code} - {response.text}")
+                
+        except PermissionError as e:
+            self._logger.warning(f"🚫 Creación de factura bloqueada: {e}")
+            raise
+        except Exception as e:
+            self._logger.error(f"❌ Error creando factura: {e}")
+            raise
+    
+    def safe_update_invoice(self, invoice_id: str, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Actualizar factura con confirmación de seguridad.
+        
+        Args:
+            invoice_id: ID de la factura a actualizar
+            invoice_data: Nuevos datos de la factura
+            
+        Returns:
+            Dict con la respuesta de la API
+        """
+        try:
+            if not self._is_authenticated:
+                raise Exception("No autenticado con Siigo API")
+            
+            url = f"{os.getenv('SIIGO_API_URL')}/v1/invoices/{invoice_id}"
+            headers = self._get_headers()
+            
+            response = self._safe_request('PUT', url, json=invoice_data, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                self._logger.info(f"✅ Factura {invoice_id} actualizada exitosamente")
+                return response.json()
+            else:
+                raise Exception(f"Error actualizando factura: {response.status_code} - {response.text}")
+                
+        except PermissionError as e:
+            self._logger.warning(f"🚫 Actualización de factura bloqueada: {e}")
+            raise
+        except Exception as e:
+            self._logger.error(f"❌ Error actualizando factura: {e}")
+            raise
+    
+    def safe_delete_invoice(self, invoice_id: str) -> bool:
+        """
+        Eliminar factura con confirmación de seguridad.
+        
+        Args:
+            invoice_id: ID de la factura a eliminar
+            
+        Returns:
+            bool: True si se eliminó exitosamente
+        """
+        try:
+            if not self._is_authenticated:
+                raise Exception("No autenticado con Siigo API")
+            
+            url = f"{os.getenv('SIIGO_API_URL')}/v1/invoices/{invoice_id}"
+            headers = self._get_headers()
+            
+            response = self._safe_request('DELETE', url, headers=headers, timeout=30)
+            
+            if response.status_code == 204:
+                self._logger.info(f"✅ Factura {invoice_id} eliminada exitosamente")
+                return True
+            else:
+                raise Exception(f"Error eliminando factura: {response.status_code} - {response.text}")
+                
+        except PermissionError as e:
+            self._logger.warning(f"🚫 Eliminación de factura bloqueada: {e}")
+            raise
+        except Exception as e:
+            self._logger.error(f"❌ Error eliminando factura: {e}")
+            raise

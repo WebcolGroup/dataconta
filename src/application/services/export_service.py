@@ -539,3 +539,60 @@ class ExportService:
                 message="Error escribiendo archivo",
                 error=str(e)
             )
+    
+    def export_json_real(self, data: Dict[str, Any], filename: str) -> ExportResult:
+        """
+        Exportar datos a archivo JSON real.
+        
+        Args:
+            data: Diccionario con los datos a exportar
+            filename: Nombre del archivo (con extensión .json)
+            
+        Returns:
+            ExportResult: Resultado de la operación de exportación
+        """
+        try:
+            import json
+            
+            os.makedirs("outputs", exist_ok=True)
+            file_path = os.path.join("outputs", filename)
+            
+            if not data:
+                return ExportResult(
+                    success=False,
+                    file_path="",
+                    file_size=0,
+                    records_count=0,
+                    message="Sin datos para exportar",
+                    error="Datos vacíos"
+                )
+            
+            # Escribir archivo JSON
+            with open(file_path, 'w', encoding='utf-8') as jsonfile:
+                json.dump(data, jsonfile, ensure_ascii=False, indent=2, default=str)
+            
+            file_size = os.path.getsize(file_path)
+            
+            # Contar registros (estimación basada en estructura del Estado de Resultados)
+            records_count = len(data.get('facturas_procesadas', []))
+            
+            self._logger.info(f"✅ JSON creado: {filename} ({file_size/1024:.1f} KB)")
+            
+            return ExportResult(
+                success=True,
+                file_path=file_path,
+                file_size=file_size,
+                records_count=records_count,
+                message=f"JSON exportado: {records_count} registros"
+            )
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error escribiendo JSON: {e}")
+            return ExportResult(
+                success=False,
+                file_path="",
+                file_size=0,
+                records_count=0,
+                message="Error escribiendo archivo JSON",
+                error=str(e)
+            )

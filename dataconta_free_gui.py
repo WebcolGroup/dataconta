@@ -25,6 +25,18 @@ except ImportError as e:
     print(f"⚠️ Módulo de gráficas no disponible: {e}")
     CHARTS_AVAILABLE = False
 
+# Importar widgets de reportes
+try:
+    from src.presentation.widgets.reportes_widget import ReportesWidget
+    from src.presentation.controllers.free_gui_controller import FreeGUIController
+    from src.infrastructure.repositories.siigo_invoice_repository import SiigoInvoiceRepository
+    from src.infrastructure.storage.file_storage import FileStorage
+    import logging
+    REPORTES_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Widgets de reportes no disponibles: {e}")
+    REPORTES_AVAILABLE = False
+
 
 class DataContaFreeGUI(QMainWindow):
     """DataConta FREE GUI con estilo PRO y funcionalidades reales."""
@@ -140,11 +152,15 @@ class DataContaFreeGUI(QMainWindow):
         export_tab = self.create_export_free()
         tab_widget.addTab(export_tab, "📤 Exportar CSV")
         
-        # Tab 4: Nueva funcionalidad - Descarga API Siigo  
+        # Tab 4: Reportes - Estado de Resultados
+        reportes_tab = self.create_reportes_tab()
+        tab_widget.addTab(reportes_tab, "📊 Reportes")
+        
+        # Tab 5: Nueva funcionalidad - Descarga API Siigo  
         siigo_tab = self.create_siigo_api_tab()
         tab_widget.addTab(siigo_tab, "🌐 API Siigo")
         
-        # Tab 5: Funciones PRO (con avisos)
+        # Tab 6: Funciones PRO (con avisos)
         pro_tab = self.create_pro_preview_tab()
         tab_widget.addTab(pro_tab, "🏆 Funciones PRO")
         
@@ -2732,6 +2748,140 @@ sin aplicar filtros para probar la conectividad.
                 f"Error al generar visualizaciones:\\n\\n{str(e)}\\n\\n"
                 f"Verifique que matplotlib y seaborn estén instalados."
             )
+
+    def create_reportes_tab(self):
+        """Crear tab de reportes con Estado de Resultados Excel."""
+        if not REPORTES_AVAILABLE:
+            # Si no están disponibles los reportes, mostrar mensaje de upgrade
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+            
+            upgrade_frame = QFrame()
+            upgrade_frame.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                                stop: 0 #2196F3, stop: 1 #1976D2);
+                    border-radius: 15px;
+                    border: 2px solid #0D47A1;
+                }
+            """)
+            upgrade_layout = QVBoxLayout(upgrade_frame)
+            
+            # Título
+            title_label = QLabel("📊 Estados de Resultados Excel")
+            title_label.setFont(QFont("Segoe UI", 20, QFont.Bold))
+            title_label.setStyleSheet("color: white; margin: 10px;")
+            title_label.setAlignment(Qt.AlignCenter)
+            
+            # Descripción
+            desc_label = QLabel("""
+            📈 <b>Reportes Financieros Automáticos</b><br><br>
+            ✨ <b>Genere Estados de Resultados profesionales en Excel:</b><br><br>
+            • 📊 Cumple Decreto 2420/2015 y NIIF colombiano<br>
+            • 🧮 Cálculo automático de utilidades y márgenes<br>
+            • 📅 Análisis comparativo entre períodos<br>
+            • 💰 Integración directa con API Siigo<br>
+            • 📈 Formato Excel profesional con gráficas<br><br>
+            🏆 <b>Disponible en versión PRO</b>
+            """)
+            desc_label.setFont(QFont("Segoe UI", 11))
+            desc_label.setStyleSheet("color: white; margin: 15px; line-height: 1.4;")
+            desc_label.setWordWrap(True)
+            
+            # Botón upgrade
+            upgrade_btn = QPushButton("🚀 Upgrade a PRO")
+            upgrade_btn.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            upgrade_btn.setStyleSheet("""
+                QPushButton {
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 8px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background: #45a049;
+                }
+            """)
+            upgrade_btn.clicked.connect(self.show_pro_upgrade)
+            
+            upgrade_layout.addWidget(title_label)
+            upgrade_layout.addWidget(desc_label)
+            upgrade_layout.addWidget(upgrade_btn, alignment=Qt.AlignCenter)
+            
+            layout.addWidget(upgrade_frame)
+            return widget
+            
+        # Si están disponibles, crear el widget de reportes real
+        try:
+            # Inicializar dependencias si no existen
+            if not hasattr(self, '_controller'):
+                # Crear logger
+                logger = logging.getLogger('DataContaFree')
+                logger.setLevel(logging.INFO)
+                
+                # Crear handler de consola si no existe
+                if not logger.handlers:
+                    console_handler = logging.StreamHandler()
+                    console_handler.setLevel(logging.INFO)
+                    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                    console_handler.setFormatter(formatter)
+                    logger.addHandler(console_handler)
+                
+                # Crear repositorio y storage
+                invoice_repository = SiigoInvoiceRepository()
+                file_storage = FileStorage()
+                
+                # Crear controlador
+                self._controller = FreeGUIController(invoice_repository, logger, file_storage)
+            
+            # Crear widget de reportes
+            reportes_widget = ReportesWidget()
+            
+            # Conectar señal del widget al controlador
+            reportes_widget.estado_resultados_excel_requested.connect(
+                self._controller.handle_estado_resultados_excel_request
+            )
+            
+            # Conectar señal de éxito del controlador para mostrar mensaje
+            self._controller.estado_resultados_generated.connect(
+                self._on_estado_resultados_generated
+            )
+            
+            return reportes_widget
+            
+        except Exception as e:
+            self.log_message(f"❌ Error creando tab de reportes: {e}")
+            
+            # Widget de fallback
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+            
+            error_label = QLabel(f"❌ Error cargando reportes:\n{str(e)}")
+            error_label.setFont(QFont("Segoe UI", 12))
+            error_label.setStyleSheet("color: #f44336; margin: 20px;")
+            error_label.setAlignment(Qt.AlignCenter)
+            error_label.setWordWrap(True)
+            
+            layout.addWidget(error_label)
+            return widget
+    
+    def _on_estado_resultados_generated(self, file_path: str, message: str):
+        """Manejar cuando se genera exitosamente un Estado de Resultados Excel."""
+        self.log_message(f"✅ {message}")
+        
+        QMessageBox.information(
+            self,
+            "✅ Estado de Resultados Excel Generado",
+            f"📊 <b>¡Reporte generado exitosamente!</b><br><br>"
+            f"📁 <b>Archivo:</b> {os.path.basename(file_path)}<br>"
+            f"🏢 <b>Normativa:</b> Decreto 2420/2015, PUC colombiano<br>"
+            f"💰 <b>Incluye:</b> Utilidades, márgenes y análisis completo<br><br>"
+            f"📂 <b>Ubicación:</b><br>"
+            f"{file_path}<br><br>"
+            f"🔍 El archivo Excel está listo para revisión contable."
+        )
 
 
 def create_free_splash(app=None):

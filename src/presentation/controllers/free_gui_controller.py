@@ -7,7 +7,7 @@ Implementa interfaces del dominio y coordina la vista con los servicios.
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from PySide6.QtWidgets import QMessageBox, QTableWidget
-from PySide6.QtCore import QObject, Signal as pyqtSignal
+from PySide6.QtCore import QObject, Signal as pyqtSignal, QDate
 
 from src.domain.interfaces.ui_interfaces import UIMenuController, UIUserInteraction
 from src.domain.interfaces.ui_interfaces import UIFileOperations, UIDataPresentation
@@ -79,6 +79,7 @@ class FreeGUIController(QObject):
     data_loaded = pyqtSignal()
     export_completed = pyqtSignal(str)
     kpis_calculated = pyqtSignal(dict)
+    estado_resultados_generated = pyqtSignal(str, str)  # file_path, summary
     
     def __init__(self, 
                  kpi_service: KPIService, 
@@ -99,6 +100,9 @@ class FreeGUIController(QObject):
         self._invoices_data = []
         self._current_kpis: Optional[KPIData] = None
         self._gui_reference = None  # Referencia a la ventana principal
+        
+        # Configurar sistema de seguridad API
+        self._setup_api_security()
         
         # Cargar KPIs existentes automáticamente al inicializar
         self._auto_load_existing_kpis()
@@ -387,6 +391,317 @@ class FreeGUIController(QObject):
             self._logger.error(f"❌ Error exportando CSV: {e}")
             self.show_error_message(f"Error exportando CSV: {e}")
             return False
+    
+    def generate_estado_resultados(self, fecha_desde: str, fecha_hasta: str) -> bool:
+        """
+        Generar Estado de Resultados para el rango de fechas especificado.
+        
+        Args:
+            fecha_desde: Fecha inicio en formato YYYY-MM-DD
+            fecha_hasta: Fecha fin en formato YYYY-MM-DD
+            
+        Returns:
+            bool: True si se generó exitosamente
+        """
+        try:
+            self._logger.info(f"🔄 Generando Estado de Resultados: {fecha_desde} - {fecha_hasta}")
+            
+            # Validar conexión
+            if not self._invoice_repository.is_connected():
+                self._logger.error("❌ No hay conexión con Siigo API")
+                self.show_error_message("No se puede generar el reporte. Verifique la conexión con Siigo API.")
+                return False
+            
+            # Obtener facturas del período
+            from datetime import datetime
+            fecha_desde_dt = datetime.strptime(fecha_desde, "%Y-%m-%d")
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, "%Y-%m-%d")
+            
+            filtro = InvoiceFilter(
+                created_start=fecha_desde_dt,
+                created_end=fecha_hasta_dt
+            )
+            
+            facturas = self._invoice_repository.get_invoices(filtro)
+            
+            if not facturas:
+                self._logger.warning("⚠️ No se encontraron facturas para el período especificado")
+                self.show_info_message("No se encontraron facturas para el período especificado.")
+                return False
+            
+            # Procesar datos para estado de resultados
+            estado_resultados = self._process_estado_resultados(facturas, fecha_desde, fecha_hasta)
+            
+            # Generar archivo usando export_service
+            filename = f"estado_resultados_Período_{fecha_desde}_-_{fecha_hasta}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            
+            result = self._export_service.export_json_real(
+                data=estado_resultados,
+                filename=filename
+            )
+            
+            if result.success:
+                summary = f"Estado de Resultados generado: {len(facturas)} facturas procesadas"
+                self._logger.info(f"✅ {summary}")
+                self.show_success_message(f"Estado de Resultados generado exitosamente:\n{result.file_path}")
+                self.estado_resultados_generated.emit(result.file_path or "", summary)
+                return True
+            else:
+                self._logger.error(f"❌ Error generando estado de resultados: {result.error}")
+                self.show_error_message(f"Error generando estado de resultados: {result.error}")
+                return False
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error generando Estado de Resultados: {e}")
+            self.show_error_message(f"Error generando Estado de Resultados: {e}")
+            return False
+    
+    def handle_estado_resultados_request(self, fecha_desde: QDate, fecha_hasta: QDate) -> None:
+        """
+        Manejar solicitud de estado de resultados desde widget (wrapper para QDate).
+        
+        Args:
+            fecha_desde: Fecha inicio como QDate
+            fecha_hasta: Fecha fin como QDate
+        """
+        try:
+            # Convertir QDate a string
+            fecha_desde_str = fecha_desde.toString("yyyy-MM-dd")
+            fecha_hasta_str = fecha_hasta.toString("yyyy-MM-dd")
+            
+            # Llamar al método principal
+            self.generate_estado_resultados(fecha_desde_str, fecha_hasta_str)
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error manejando solicitud de estado de resultados: {e}")
+            self.show_error_message(f"Error procesando solicitud: {e}")
+    
+    def handle_estado_resultados_excel_request(self, 
+                                                   fecha_desde: QDate, 
+                                                   fecha_hasta: QDate,
+                                                   tipo_comparacion: str = "SIN_COMPARACION",
+                                                   fecha_desde_comp: Optional[QDate] = None,
+                                                   fecha_hasta_comp: Optional[QDate] = None) -> None:
+        """
+        Manejar solicitud de Estado de Resultados en Excel desde widget.
+        
+        Args:
+            fecha_desde: Fecha inicio período actual como QDate
+            fecha_hasta: Fecha fin período actual como QDate
+            tipo_comparacion: Tipo de comparación (enum)
+            fecha_desde_comp: Fecha inicio período comparación (opcional)
+            fecha_hasta_comp: Fecha fin período comparación (opcional)
+        """
+        print(f"DEBUG: 🎯 CONTROLADOR - handle_estado_resultados_excel_request llamado! Fechas: {fecha_desde.toString('dd/MM/yyyy')} - {fecha_hasta.toString('dd/MM/yyyy')}")  # Debug temporal
+        print(f"DEBUG: 🔍 Tipo comparación recibido: '{tipo_comparacion}'")  # Debug nuevo
+        print(f"DEBUG: 🗓️ Fechas comparación: {fecha_desde_comp} - {fecha_hasta_comp}")  # Debug nuevo
+        
+        # Usar asyncio para ejecutar el método asincrónico
+        import asyncio
+        try:
+            # Crear un nuevo loop si no existe uno
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError("Event loop is closed")
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Ejecutar el método asincrónico
+            loop.run_until_complete(
+                self._handle_estado_resultados_excel_async(
+                    fecha_desde, fecha_hasta, tipo_comparacion, 
+                    fecha_desde_comp, fecha_hasta_comp
+                )
+            )
+        except Exception as e:
+            print(f"DEBUG: ❌ Error en controlador: {e}")  # Debug temporal
+            self._logger.error(f"❌ Error en handle_estado_resultados_excel_request: {e}")
+            self.show_error_message(f"Error procesando solicitud de Estado de Resultados Excel: {e}")
+    
+    async def _handle_estado_resultados_excel_async(self, 
+                                                   fecha_desde: QDate, 
+                                                   fecha_hasta: QDate,
+                                                   tipo_comparacion: str = "SIN_COMPARACION",
+                                                   fecha_desde_comp: Optional[QDate] = None,
+                                                   fecha_hasta_comp: Optional[QDate] = None) -> None:
+        """
+        Método asincrónico interno para manejar Estado de Resultados en Excel.
+        """
+        try:
+            self._logger.info("📊 Iniciando generación de Estado de Resultados Excel")
+            
+            # Importar ReportService y excepciones
+            from src.application.services.report_service import ReportService
+            from src.domain.exceptions.estado_resultados_exceptions import (
+                EstadoResultadosError, SiigoAPIError, DataValidationError, 
+                ExcelGenerationError, DateRangeError
+            )
+            
+            # Crear instancia del servicio
+            report_service = ReportService(self._invoice_repository, self._logger, self._file_storage)
+            
+            # Convertir QDate a datetime
+            fecha_desde_dt = datetime.strptime(fecha_desde.toString("yyyy-MM-dd"), "%Y-%m-%d")
+            fecha_hasta_dt = datetime.strptime(fecha_hasta.toString("yyyy-MM-dd"), "%Y-%m-%d")
+            
+            fecha_desde_comp_dt = None
+            fecha_hasta_comp_dt = None
+            
+            if fecha_desde_comp and fecha_desde_comp.isValid():
+                fecha_desde_comp_dt = datetime.strptime(fecha_desde_comp.toString("yyyy-MM-dd"), "%Y-%m-%d")
+            if fecha_hasta_comp and fecha_hasta_comp.isValid():
+                fecha_hasta_comp_dt = datetime.strptime(fecha_hasta_comp.toString("yyyy-MM-dd"), "%Y-%m-%d")
+            
+            # Generar Estado de Resultados Excel
+            file_path = await report_service.generar_estado_resultados_excel(
+                fecha_desde_dt,
+                fecha_hasta_dt,
+                tipo_comparacion,
+                fecha_desde_comp_dt,
+                fecha_hasta_comp_dt
+            )
+            
+            # Emitir señal de éxito
+            self.estado_resultados_generated.emit(
+                file_path, 
+                f"Estado de Resultados Excel generado para período {fecha_desde.toString('dd/MM/yyyy')} - {fecha_hasta.toString('dd/MM/yyyy')}"
+            )
+            
+            self._logger.info(f"✅ Estado de Resultados Excel generado exitosamente: {file_path}")
+            
+        except DateRangeError as e:
+            error_msg = f"Rango de fechas inválido: {e.message}"
+            if e.details:
+                error_msg += f" ({e.details})"
+            self._logger.error(f"❌ {error_msg}")
+            self.show_error_message(error_msg)
+            
+        except SiigoAPIError as e:
+            error_msg = f"Error de Siigo API: {e.message}"
+            if e.details:
+                error_msg += f"\n\nDetalles técnicos: {e.details}"
+            self._logger.error(f"❌ {error_msg}")
+            self.show_error_message(f"Error de conexión con Siigo API:\n{e.message}")
+            
+        except DataValidationError as e:
+            error_msg = f"Error en validación de datos: {e.message}"
+            if e.details:
+                error_msg += f" ({e.details})"
+            self._logger.error(f"❌ {error_msg}")
+            self.show_error_message(f"Los datos contables no son válidos:\n{e.message}")
+            
+        except ExcelGenerationError as e:
+            error_msg = f"Error generando archivo Excel: {e.message}"
+            if e.details:
+                error_msg += f" ({e.details})"
+            self._logger.error(f"❌ {error_msg}")
+            self.show_error_message(f"No se pudo generar el archivo Excel:\n{e.message}")
+            
+        except EstadoResultadosError as e:
+            error_msg = f"Error en Estado de Resultados: {e.message}"
+            if e.details:
+                error_msg += f" ({e.details})"
+            self._logger.error(f"❌ {error_msg}")
+            self.show_error_message(f"Error generando Estado de Resultados:\n{e.message}")
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error inesperado generando Estado de Resultados Excel: {e}")
+            self.show_error_message(f"Error inesperado generando Estado de Resultados Excel: {e}")
+    
+    def _process_estado_resultados(self, facturas: List, fecha_desde: str, fecha_hasta: str) -> Dict[str, Any]:
+        """
+        Procesar facturas para generar estructura de estado de resultados.
+        
+        Args:
+            facturas: Lista de facturas obtenidas de Siigo (Invoice objects)
+            fecha_desde: Fecha inicio del período
+            fecha_hasta: Fecha fin del período
+            
+        Returns:
+            Dict con estructura de estado de resultados
+        """
+        from src.domain.entities.invoice import Invoice
+        
+        total_ingresos = 0
+        total_impuestos = 0
+        facturas_procesadas = []
+        
+        for factura in facturas:
+            # Verificar si es una Invoice entity o un dict
+            if isinstance(factura, Invoice):
+                # Procesar Invoice entity - mantener consistencia de tipos usando Decimal
+                from decimal import Decimal
+                
+                # Calcular subtotal (suma de items sin impuestos)
+                subtotal_decimal = factura.calculate_total() or Decimal('0')
+                
+                # Obtener total de la factura (con impuestos)
+                total_decimal = factura.total or subtotal_decimal
+                
+                # Calcular impuestos como diferencia
+                impuestos_decimal = total_decimal - subtotal_decimal if total_decimal > subtotal_decimal else Decimal('0')
+                
+                # Convertir a float solo para almacenamiento final
+                subtotal = float(subtotal_decimal)
+                total_factura = float(total_decimal)
+                impuestos = float(impuestos_decimal)
+                
+                total_ingresos += subtotal
+                total_impuestos += impuestos
+                
+                facturas_procesadas.append({
+                    'numero': str(factura.number or ''),
+                    'fecha': factura.date.isoformat() if factura.date else '',
+                    'cliente': factura.customer.identification if factura.customer else '',
+                    'subtotal': subtotal,
+                    'impuestos': impuestos,
+                    'total': total_factura
+                })
+            else:
+                # Fallback para dict (compatibilidad)
+                subtotal = float(factura.get('subtotal', 0)) if isinstance(factura, dict) else 0
+                impuestos = float(factura.get('total_tax', 0)) if isinstance(factura, dict) else 0
+                total_factura = float(factura.get('total', 0)) if isinstance(factura, dict) else 0
+                
+                total_ingresos += subtotal
+                total_impuestos += impuestos
+                
+                facturas_procesadas.append({
+                    'numero': factura.get('number', '') if isinstance(factura, dict) else str(factura),
+                    'fecha': factura.get('date', '') if isinstance(factura, dict) else '',
+                    'cliente': factura.get('customer', {}).get('identification', '') if isinstance(factura, dict) else '',
+                    'subtotal': subtotal,
+                    'impuestos': impuestos,
+                    'total': total_factura
+                })
+        
+        return {
+            'metadata': {
+                'tipo_reporte': 'Estado de Resultados',
+                'fecha_generacion': datetime.now().isoformat(),
+                'periodo': {
+                    'fecha_inicio': fecha_desde,
+                    'fecha_fin': fecha_hasta
+                },
+                'total_facturas': len(facturas)
+            },
+            'resumen_financiero': {
+                'ingresos_brutos': total_ingresos,
+                'total_impuestos': total_impuestos,
+                'ingresos_netos': total_ingresos - total_impuestos,
+                'promedio_factura': total_ingresos / len(facturas) if facturas else 0
+            },
+            'detalle_facturas': facturas_procesadas,
+            'analisis': {
+                'factura_mayor': max(facturas_procesadas, key=lambda x: x['total']) if facturas_procesadas else None,
+                'factura_menor': min(facturas_procesadas, key=lambda x: x['total']) if facturas_procesadas else None,
+                'distribucion_impuestos': {
+                    'porcentaje_impuestos': (total_impuestos / (total_ingresos + total_impuestos) * 100) if total_ingresos > 0 else 0
+                }
+            }
+        }
     
     def export_to_excel(self, data: List[Dict[str, Any]], filename: str) -> bool:
         """Exportar datos a Excel."""
@@ -1070,6 +1385,124 @@ class FreeGUIController(QObject):
         }
     
     def _save_kpis_to_file_like_free_gui(self, kpis_data: Dict[str, Any], year: int) -> None:
+        """Guardar KPIs en archivo JSON (igual que FREE GUI)."""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            # Crear directorio si no existe
+            os.makedirs("outputs", exist_ok=True)
+            
+            # Generar nombre de archivo
+            timestamp = datetime.now().strftime("%Y_%m%d_%H%M%S")
+            filename = f"kpis_siigo_{year}_{timestamp}.json"
+            filepath = os.path.join("outputs", filename)
+            
+            # Guardar KPIs
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(kpis_data, f, ensure_ascii=False, indent=2, default=str)
+            
+            file_size = os.path.getsize(filepath) / 1024
+            self._logger.info(f"💾 KPIs guardados: {filename} ({file_size:.1f} KB)")
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error guardando KPIs: {e}")
+    
+    def search_invoices_with_pagination(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Buscar facturas con paginación limitada a 500 registros.
+        
+        Args:
+            filters: Filtros de búsqueda (fecha_inicio, fecha_fin, cliente)
+            
+        Returns:
+            Lista de facturas con máximo 500 registros
+        """
+        try:
+            from src.domain.entities.invoice import InvoiceFilter
+            from datetime import datetime
+            
+            self._logger.info(f"🔍 Iniciando búsqueda de facturas con filtros: {filters}")
+            
+            # Crear filtro para la API
+            filtro = InvoiceFilter()
+            
+            # Mapear filtros del widget a filtros de la API
+            if 'fecha_inicio' in filters:
+                filtro.created_start = filters['fecha_inicio']
+            if 'fecha_fin' in filters:
+                filtro.created_end = filters['fecha_fin']
+            if 'customer_id' in filters:
+                filtro.customer_id = filters['customer_id']
+            if 'status' in filters:
+                filtro.status = filters['status']
+                
+            # Configurar paginación (máximo 500 facturas)
+            max_facturas = 500
+            facturas_encontradas = []
+            pagina_actual = 1
+            facturas_por_pagina = 100  # API de Siigo máximo 100 por página
+            
+            while len(facturas_encontradas) < max_facturas:
+                # Configurar filtro de página
+                filtro.page = pagina_actual
+                filtro.page_size = min(facturas_por_pagina, max_facturas - len(facturas_encontradas))
+                
+                self._logger.info(f"📡 Consultando página {pagina_actual}, {filtro.page_size} registros")
+                
+                # Obtener facturas de esta página
+                facturas_pagina = self._invoice_repository.get_invoices(filtro)
+                
+                if not facturas_pagina:
+                    self._logger.info(f"📄 Página {pagina_actual} vacía, finalizando búsqueda")
+                    break
+                
+                # Filtrar por cliente si se especificó
+                if 'cliente' in filters and filters['cliente']:
+                    cliente_filtro = filters['cliente'].lower()
+                    facturas_pagina = [
+                        f for f in facturas_pagina 
+                        if f.customer and cliente_filtro in (f.customer.name or '').lower()
+                    ]
+                
+                facturas_encontradas.extend(facturas_pagina)
+                self._logger.info(f"✅ Página {pagina_actual}: {len(facturas_pagina)} facturas, total: {len(facturas_encontradas)}")
+                
+                # Si obtuvimos menos facturas de las esperadas, no hay más páginas
+                if len(facturas_pagina) < filtro.page_size:
+                    break
+                    
+                pagina_actual += 1
+                
+                # Límite de seguridad: máximo 5 páginas (500 facturas)
+                if pagina_actual > 5:
+                    break
+            
+            # Convertir entidades Invoice a diccionarios para el widget
+            facturas_formateadas = []
+            for factura in facturas_encontradas:
+                try:
+                    factura_dict = {
+                        'numero': factura.number or 'N/A',
+                        'fecha': factura.date.strftime('%Y-%m-%d') if factura.date else 'N/A',
+                        'cliente': factura.customer.name if factura.customer else 'N/A',
+                        'monto': float(factura.total) if factura.total else 0.0,
+                        'estado': 'Activa'  # Por simplicidad en versión FREE
+                    }
+                    facturas_formateadas.append(factura_dict)
+                except Exception as e:
+                    self._logger.warning(f"⚠️ Error formateando factura {factura.id}: {e}")
+                    continue
+            
+            self._logger.info(f"✅ Búsqueda completada: {len(facturas_formateadas)} facturas encontradas")
+            return facturas_formateadas
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error en búsqueda de facturas: {e}")
+            return []
+
+    def _save_kpis_to_file_like_free_gui(self, kpis_data: dict, year: int) -> None:
         """Guardar KPIs en archivo JSON replicando formato de dataconta_free_gui.py."""
         try:
             import os
@@ -1104,3 +1537,224 @@ class FreeGUIController(QObject):
             
         except Exception as e:
             self._logger.error(f"❌ Error guardando KPIs: {e}")
+    
+    def load_customers_for_dropdown(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Cargar lista de clientes desde API Siigo para dropdown.
+        Limitado para versión FREE.
+        
+        Args:
+            limit: Máximo número de clientes (FREE: 50)
+            
+        Returns:
+            Lista de diccionarios con datos de clientes
+        """
+        try:
+            self._logger.info(f"🔄 Cargando clientes para dropdown (límite: {limit})")
+            
+            # Verificar si el adaptador soporta el método get_customers
+            if hasattr(self._invoice_repository, 'get_customers'):
+                customers = self._invoice_repository.get_customers(limit)
+                self._logger.info(f"✅ Cargados {len(customers)} clientes desde API")
+                return customers
+            else:
+                self._logger.warning("⚠️ Adaptador no soporta get_customers")
+                return []
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error cargando clientes: {e}")
+            return []
+    
+    def load_invoice_statuses(self) -> List[Dict[str, str]]:
+        """
+        Cargar estados disponibles para facturas.
+        
+        Returns:
+            Lista de diccionarios con value y label de estados
+        """
+        try:
+            self._logger.info("🔄 Cargando estados de facturas")
+            
+            # Verificar si el adaptador soporta el método get_invoice_statuses
+            if hasattr(self._invoice_repository, 'get_invoice_statuses'):
+                statuses = self._invoice_repository.get_invoice_statuses()
+                self._logger.info(f"✅ Cargados {len(statuses)} estados desde API")
+                return statuses
+            else:
+                # Estados por defecto si no hay soporte
+                default_statuses = [
+                    {'value': '', 'label': 'Todos los Estados'},
+                    {'value': 'open', 'label': '🔓 Abierta'},
+                    {'value': 'closed', 'label': '🔒 Cerrada'},
+                    {'value': 'cancelled', 'label': '❌ Anulada'}
+                ]
+                self._logger.info(f"ℹ️ Usando estados por defecto: {len(default_statuses)}")
+                return default_statuses
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error cargando estados: {e}")
+            return [{'value': '', 'label': 'Todos los Estados'}]
+    
+    # ==================== Sistema de Seguridad API ====================
+    
+    def _setup_api_security(self):
+        """Configurar sistema de seguridad para operaciones API peligrosas."""
+        try:
+            # Verificar si el adaptador soporta seguridad
+            if hasattr(self._invoice_repository, 'set_safety_callback'):
+                self._invoice_repository.set_safety_callback(self._confirm_dangerous_operation)
+                self._logger.info("🛡️ Sistema de seguridad API configurado")
+            else:
+                self._logger.warning("⚠️ Adaptador no soporta sistema de seguridad")
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error configurando seguridad API: {e}")
+    
+    def _confirm_dangerous_operation(self, method: str, url: str, data: Dict[str, Any]) -> bool:
+        """Solicitar confirmación del usuario para operaciones peligrosas."""
+        try:
+            # Importar el modal de seguridad
+            from src.presentation.widgets.api_safety_modal import APISafetyModal, OperationType
+            
+            # Mapear método HTTP a OperationType
+            operation_type_map = {
+                'POST': OperationType.POST,
+                'PUT': OperationType.PUT,
+                'PATCH': OperationType.PATCH,
+                'DELETE': OperationType.DELETE
+            }
+            
+            operation_type = operation_type_map.get(method.upper())
+            if not operation_type:
+                self._logger.error(f"Tipo de operación no reconocido: {method}")
+                return False
+            
+            # Mostrar modal de confirmación
+            parent = self._gui_reference if self._gui_reference else None
+            approved = APISafetyModal.confirm_operation(
+                operation_type=operation_type,
+                endpoint=url,
+                payload=data,
+                parent=parent
+            )
+            
+            # Log del resultado
+            if approved:
+                self._logger.info(f"✅ Usuario aprobó: {method} {url}")
+                self._log_approved_operation(method, url, data)
+            else:
+                self._logger.warning(f"❌ Usuario rechazó: {method} {url}")
+                self._log_rejected_operation(method, url, data)
+            
+            return approved
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error en confirmación de operación: {e}")
+            return False
+    
+    def _log_approved_operation(self, method: str, url: str, data: Dict[str, Any]):
+        """Registrar operación aprobada para auditoría."""
+        try:
+            audit_log = {
+                'timestamp': datetime.now().isoformat(),
+                'action': 'OPERATION_APPROVED',
+                'method': method,
+                'endpoint': url,
+                'data_size': len(str(data)) if data else 0,
+                'user_approved': True
+            }
+            
+            self._logger.info(f"📋 Operación aprobada: {audit_log}")
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error registrando operación aprobada: {e}")
+    
+    def _log_rejected_operation(self, method: str, url: str, data: Dict[str, Any]):
+        """Registrar operación rechazada para auditoría."""
+        try:
+            audit_log = {
+                'timestamp': datetime.now().isoformat(),
+                'action': 'OPERATION_REJECTED',
+                'method': method,
+                'endpoint': url,
+                'data_size': len(str(data)) if data else 0,
+                'user_approved': False
+            }
+            
+            self._logger.warning(f"🚫 Operación rechazada: {audit_log}")
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error registrando operación rechazada: {e}")
+    
+    # ==================== Métodos seguros para operaciones API ====================
+    
+    def safe_create_invoice(self, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Crear factura de forma segura con confirmación del usuario."""
+        try:
+            if hasattr(self._invoice_repository, 'safe_create_invoice'):
+                result = self._invoice_repository.safe_create_invoice(invoice_data)
+                self._logger.info("✅ Factura creada exitosamente")
+                return result
+            else:
+                raise Exception("Adaptador no soporta creación segura")
+                
+        except PermissionError as e:
+            self._show_permission_denied_message("creación de factura", str(e))
+            raise
+        except Exception as e:
+            self._show_error_message(f"Error creando factura: {e}")
+            raise
+    
+    def safe_update_invoice(self, invoice_id: str, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Actualizar factura de forma segura con confirmación del usuario."""
+        try:
+            if hasattr(self._invoice_repository, 'safe_update_invoice'):
+                result = self._invoice_repository.safe_update_invoice(invoice_id, invoice_data)
+                self._logger.info(f"✅ Factura {invoice_id} actualizada exitosamente")
+                return result
+            else:
+                raise Exception("Adaptador no soporta actualización segura")
+                
+        except PermissionError as e:
+            self._show_permission_denied_message("actualización de factura", str(e))
+            raise
+        except Exception as e:
+            self._show_error_message(f"Error actualizando factura: {e}")
+            raise
+    
+    def safe_delete_invoice(self, invoice_id: str) -> bool:
+        """Eliminar factura de forma segura con confirmación del usuario."""
+        try:
+            if hasattr(self._invoice_repository, 'safe_delete_invoice'):
+                result = self._invoice_repository.safe_delete_invoice(invoice_id)
+                self._logger.info(f"✅ Factura {invoice_id} eliminada exitosamente")
+                return result
+            else:
+                raise Exception("Adaptador no soporta eliminación segura")
+                
+        except PermissionError as e:
+            self._show_permission_denied_message("eliminación de factura", str(e))
+            raise
+        except Exception as e:
+            self._show_error_message(f"Error eliminando factura: {e}")
+            raise
+    
+    def _show_permission_denied_message(self, operation: str, details: str):
+        """Mostrar mensaje de operación denegada."""
+        if self._gui_reference:
+            QMessageBox.warning(
+                self._gui_reference,
+                "🚫 Operación Denegada",
+                f"La {operation} fue cancelada por el usuario.\n\n"
+                f"Detalles: {details}\n\n"
+                f"Para realizar esta operación, debe aprobarla en el modal de confirmación."
+            )
+    
+    def _show_error_message(self, message: str):
+        """Mostrar mensaje de error al usuario."""
+        if self._gui_reference:
+            QMessageBox.critical(
+                self._gui_reference,
+                "❌ Error",
+                message
+            )

@@ -13,9 +13,11 @@ from PySide6.QtCore import Qt
 
 # Imports de widgets especializados
 from src.presentation.widgets.dashboard_widget import DashboardWidget
-from src.presentation.widgets.export_widget import ExportWidget
 from src.presentation.widgets.query_widget import QueryWidget
-from src.presentation.widgets.siigo_api_widget import SiigoApiWidget
+from src.presentation.widgets.exportar_widget import ExportarWidget
+from src.presentation.widgets.reportes_widget import ReportesWidget
+from src.presentation.widgets.ayuda_widget import AyudaWidget
+from src.presentation.widgets.upgrade_widget import UpgradeWidget
 
 
 class TabsWidget(QWidget):
@@ -35,9 +37,10 @@ class TabsWidget(QWidget):
         
         # Referencias a widgets especializados
         self.dashboard_widget: Optional[DashboardWidget] = None
-        self.export_widget: Optional[ExportWidget] = None
         self.query_widget: Optional[QueryWidget] = None
-        self.siigo_api_widget: Optional[SiigoApiWidget] = None
+        self.exportar_widget: Optional[ExportarWidget] = None
+        self.reportes_widget: Optional[ReportesWidget] = None
+        self.upgrade_widget: Optional[UpgradeWidget] = None
         
         self.init_ui()
     
@@ -81,17 +84,21 @@ class TabsWidget(QWidget):
         queries_tab = self._create_queries_free()
         tab_widget.addTab(queries_tab, "🔍 Consultar Facturas")
         
-        # Tab 3: Exportaciones (FUNCIONALIDAD EXISTENTE)
-        export_tab = self._create_export_free()
-        tab_widget.addTab(export_tab, "📤 Exportar CSV")
+        # Tab 3: Exportar facturas desde API Siigo  
+        exportar_tab = self._create_exportar_tab()
+        tab_widget.addTab(exportar_tab, "📤 Exportar")
         
-        # Tab 4: Nueva funcionalidad - Descarga API Siigo  
-        siigo_tab = self._create_siigo_api_tab()
-        tab_widget.addTab(siigo_tab, "🌐 API Siigo")
+        # Tab 4: Reportes financieros
+        reportes_tab = self._create_reportes_tab()
+        tab_widget.addTab(reportes_tab, "📊 Reportes")
         
-        # Tab 5: Funciones PRO (con avisos)
+        # Tab 5: Ayuda y soporte
+        ayuda_tab = self._create_ayuda_tab()
+        tab_widget.addTab(ayuda_tab, "❓ Ayuda")
+        
+        # Tab 6: Funciones PRO (con avisos) 
         pro_tab = self._create_pro_preview_tab()
-        tab_widget.addTab(pro_tab, "🏆 Funciones PRO")
+        tab_widget.addTab(pro_tab, "⭐ Funciones PRO")
         
         return tab_widget
     
@@ -113,68 +120,35 @@ class TabsWidget(QWidget):
         query_scroll.setFrameShape(QFrame.NoFrame)
         return query_scroll
     
-    def _create_export_free(self) -> QWidget:
-        """Crear tab de exportaciones FREE."""
-        self.export_widget = ExportWidget()
-        export_scroll = QScrollArea()
-        export_scroll.setWidget(self.export_widget)
-        export_scroll.setWidgetResizable(True)
-        export_scroll.setFrameShape(QFrame.NoFrame)
-        return export_scroll
+    def _create_exportar_tab(self) -> QWidget:
+        """Crear tab de exportar facturas."""
+        self.exportar_widget = ExportarWidget()
+        exportar_scroll = QScrollArea()
+        exportar_scroll.setWidget(self.exportar_widget)
+        exportar_scroll.setWidgetResizable(True)
+        exportar_scroll.setFrameShape(QFrame.NoFrame)
+        return exportar_scroll
     
-    def _create_siigo_api_tab(self) -> QWidget:
-        """Crear tab de API Siigo."""
-        self.siigo_api_widget = SiigoApiWidget()
-        siigo_scroll = QScrollArea()
-        siigo_scroll.setWidget(self.siigo_api_widget)
-        siigo_scroll.setWidgetResizable(True)
-        siigo_scroll.setFrameShape(QFrame.NoFrame)
-        return siigo_scroll
+    def _create_reportes_tab(self) -> QWidget:
+        """Crear tab de reportes financieros."""
+        self.reportes_widget = ReportesWidget()
+        reportes_scroll = QScrollArea()
+        reportes_scroll.setWidget(self.reportes_widget)
+        reportes_scroll.setWidgetResizable(True)
+        reportes_scroll.setFrameShape(QFrame.NoFrame)
+        return reportes_scroll
     
-    def _create_pro_preview_tab(self) -> QWidget:
-        """Crear tab de preview PRO (placeholder por ahora)."""
-        # TODO: Crear widget especializado para preview PRO
-        placeholder = QWidget()
-        layout = QVBoxLayout(placeholder)
-        layout.addWidget(self._create_placeholder_content("🏆 Funciones PRO", 
-                                                         "Preview de funcionalidades exclusivas PRO"))
-        return placeholder
-    
-    def _create_placeholder_content(self, title: str, description: str) -> QWidget:
-        """Crear contenido placeholder para tabs pendientes."""
-        from PySide6.QtWidgets import QLabel, QGroupBox
+    def _create_ayuda_tab(self) -> QWidget:
+        """Crear tab de ayuda con submenús usando AyudaWidget especializado."""
+        self.ayuda_widget = AyudaWidget()
         
-        group = QGroupBox(title)
-        group.setStyleSheet("QGroupBox{ border: none; font-weight: 700; }")
-        layout = QVBoxLayout(group)
+        # Crear scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(self.ayuda_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
         
-        info_label = QLabel(f"""
-        {description}
-        
-        🚧 EN DESARROLLO
-        
-        Esta funcionalidad está siendo desarrollada como parte del 
-        desacoplamiento de la arquitectura monolítica.
-        
-        📐 Principios aplicados:
-        • SRP: Responsabilidad única por widget
-        • Modular: Cada tab es un componente independiente
-        • Extensible: Fácil agregar nuevas tabs
-        """)
-        info_label.setWordWrap(True)
-        info_label.setStyleSheet("""
-            background-color: rgba(25, 118, 210, 0.08);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid rgba(25, 118, 210, 0.35);
-            color: #1976d2;
-            font-size: 12px;
-            font-weight: bold;
-            line-height: 1.4;
-        """)
-        
-        layout.addWidget(info_label)
-        return group
+        return scroll_area
     
     # ==================== Getters para acceder a widgets especializados ====================
     
@@ -182,14 +156,37 @@ class TabsWidget(QWidget):
         """Obtener referencia al dashboard widget."""
         return self.dashboard_widget
     
-    def get_export_widget(self) -> Optional[ExportWidget]:
-        """Obtener referencia al export widget."""
-        return self.export_widget
-    
     def get_query_widget(self) -> Optional[QueryWidget]:
         """Obtener referencia al query widget."""
         return self.query_widget
     
-    def get_siigo_api_widget(self) -> Optional[SiigoApiWidget]:
-        """Obtener referencia al siigo api widget."""
-        return self.siigo_api_widget
+    def get_exportar_widget(self) -> Optional[ExportarWidget]:
+        """Obtener referencia al exportar widget."""
+        return self.exportar_widget
+    
+    def get_reportes_widget(self) -> Optional[ReportesWidget]:
+        """Obtener referencia al reportes widget."""
+        return self.reportes_widget
+    
+    def get_ayuda_widget(self) -> Optional[AyudaWidget]:
+        """Obtener referencia al ayuda widget."""
+        return getattr(self, 'ayuda_widget', None)
+    
+    def get_upgrade_widget(self) -> Optional[UpgradeWidget]:
+        """Obtener referencia al upgrade widget."""
+        return self.upgrade_widget
+    
+    # ==================== Funciones PRO (al final del archivo) ====================
+    
+    def _create_pro_preview_tab(self) -> QWidget:
+        """Crear tab de funciones PRO usando UpgradeWidget especializado."""
+        self.upgrade_widget = UpgradeWidget()
+        
+        # Crear scroll area para el widget de upgrade
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(self.upgrade_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        
+        return scroll_area
+    

@@ -4,7 +4,7 @@ DataConta FREE GUI - Versión NO Monolítica con Arquitectura Hexagonal
 Este archivo es ahora el entrypoint canónico con el contenido completo de la versión no monolítica.
 """
 
-# ==================== Imports - Librerías Estándar ====================
+# ==================== Imports - Librerías Est        # LogWidget removido - logs ahora disponibles en tab Ayuda modal==================
 import sys
 import os
 import logging
@@ -39,7 +39,7 @@ from src.presentation.widgets.export_widget import ExportWidget
 from src.presentation.widgets.query_widget import QueryWidget
 from src.presentation.widgets.tabs_widget import TabsWidget
 from src.presentation.widgets.demo_handler_widget import DemoHandlerWidget
-from src.ui.log_widget import LogWidget
+# LogWidget removido - logs ahora disponibles en modal de tab Ayuda
 
 
 # ==================== Clase Principal - DataConta Main Window ====================
@@ -71,12 +71,10 @@ class DataContaMainWindow(QMainWindow):
         # Componente especializado para demos (desacoplamiento completo)
         self.demo_handler = DemoHandlerWidget(self)
         
-        # Componente especializado para logs (visualización de actividades)
-        self.log_widget: Optional[LogWidget] = None
-        
         self.init_ui()
         self.setup_window()
         self.connect_signals()
+        self._load_initial_data()
     
     # ---------- Configuración de Ventana ----------
     def setup_window(self):
@@ -122,11 +120,6 @@ class DataContaMainWindow(QMainWindow):
         self.tabs_widget = TabsWidget()
         tabs_card = self._wrap_in_card(self.tabs_widget)
         main_layout.addWidget(tabs_card)
-        
-        # LogWidget especializado (parte inferior)
-        self.log_widget = LogWidget()
-        log_card = self._wrap_in_card(self.log_widget)
-        main_layout.addWidget(log_card)
     
     # ---------- Creación de Componentes UI ----------
     def _create_header(self) -> QWidget:
@@ -204,27 +197,8 @@ class DataContaMainWindow(QMainWindow):
         else:
             print("❌ dashboard_widget es None - no se pueden conectar señales")
         
-        # Export signals
-        export_widget = self.tabs_widget.get_export_widget()
-        if export_widget:
-            export_widget.export_csv_requested.connect(
-                self.controller.export_csv_real
-            )
-            export_widget.export_csv_simple_requested.connect(
-                self.controller.export_csv_simple
-            )
-            export_widget.export_excel_requested.connect(
-                self.controller.export_excel_real
-            )
-            export_widget.siigo_csv_export_requested.connect(
-                self._handle_siigo_csv_export
-            )
-            export_widget.siigo_excel_export_requested.connect(
-                self._handle_siigo_excel_export
-            )
-            export_widget.test_connection_requested.connect(
-                self.demo_handler.show_siigo_connection_demo
-            )
+        # Export widget eliminado - funcionalidad movida a ExportarWidget
+        # Las exportaciones ahora se manejan desde el tab "Exportar"
         
         # Query signals
         query_widget = self.tabs_widget.get_query_widget()
@@ -235,28 +209,48 @@ class DataContaMainWindow(QMainWindow):
             query_widget.clear_filters_requested.connect(
                 self._handle_clear_filters
             )
+            # Signal para carga de estados
+            query_widget.load_statuses_requested.connect(
+                self._handle_load_statuses
+            )
         
-        # Siigo API signals
-        siigo_api_widget = self.tabs_widget.get_siigo_api_widget()
-        if siigo_api_widget:
-            siigo_api_widget.export_siigo_csv_requested.connect(
+        # Exportar widget signals (formerly Siigo API)
+        exportar_widget = self.tabs_widget.get_exportar_widget()
+        if exportar_widget:
+            exportar_widget.export_siigo_csv_requested.connect(
                 self._handle_siigo_csv_export
             )
-            siigo_api_widget.export_siigo_excel_requested.connect(
+            exportar_widget.export_siigo_excel_requested.connect(
                 self._handle_siigo_excel_export
             )
-            siigo_api_widget.test_connection_requested.connect(
+        
+        # Reportes widget signals
+        reportes_widget = self.tabs_widget.get_reportes_widget()
+        if reportes_widget:
+            print("🔗 Conectando señales de reportes...")
+            reportes_widget.estado_resultados_requested.connect(
+                self.controller.handle_estado_resultados_request
+            )
+            print("✅ Señal estado_resultados_requested conectada")
+            
+            # Conectar nueva señal de Estado de Resultados Excel
+            if hasattr(reportes_widget, 'estado_resultados_excel_requested'):
+                reportes_widget.estado_resultados_excel_requested.connect(
+                    self.controller.handle_estado_resultados_excel_request
+                )
+                print("✅ Señal estado_resultados_excel_requested conectada")
+            
+            # Conectar señal de éxito/error del controlador al widget
+            self.controller.estado_resultados_generated.connect(
+                lambda file_path, summary: reportes_widget.show_success_message(file_path)
+            )
+        else:
+            print("❌ reportes_widget es None - no se pueden conectar señales")
+            exportar_widget.test_connection_requested.connect(
                 self.demo_handler.show_siigo_connection_demo
             )
         
-        # LogWidget signals (if available)
-        if self.log_widget:
-            self.log_widget.log_cleared.connect(
-                lambda: self.log_message("🗑️ Logs limpiados por usuario")
-            )
-            self.log_widget.log_exported.connect(
-                lambda filepath: self.log_message(f"💾 Logs exportados a: {filepath}")
-            )
+        # LogWidget removido - logs ahora disponibles en tab Ayuda modal
         
         # Initialize logging with welcome message
         self.log_message("🆓 DataConta FREE iniciado - Arquitectura NO Monolítica")
@@ -287,20 +281,35 @@ class DataContaMainWindow(QMainWindow):
     
     # ---------- Handlers de Acciones (Delegación a Controlador y Demo Handler) ----------
     def _handle_invoice_search(self, filters: Dict[str, Any]):
-        """Manejar búsqueda de facturas."""
+        """Manejar búsqueda de facturas con API real de Siigo."""
         try:
-            # Delegar al demo handler para obtener datos demo
-            demo_invoices = self.demo_handler.show_invoice_search_demo(filters)
-            
             query_widget = self.tabs_widget.get_query_widget() if self.tabs_widget else None
-            if query_widget:
-                query_widget.update_results(demo_invoices)
-                query_widget.show_search_results_summary(len(demo_invoices), filters)
+            if not query_widget:
+                return
+                
+            # Mostrar mensaje de carga
+            query_widget.show_success_message("Búsqueda", "🔄 Consultando API de Siigo...")
+            
+            # Realizar búsqueda real con el controlador
+            facturas = self.controller.search_invoices_with_pagination(filters)
+            
+            if facturas:
+                # Mostrar resultados
+                query_widget.update_results(facturas)
+                query_widget.show_search_results_summary(len(facturas), filters)
+                
+                # Log de éxito
+                self.controller._logger.info(f"✅ Búsqueda completada: {len(facturas)} facturas encontradas")
+            else:
+                # No se encontraron facturas
+                query_widget._show_no_results_message()
+                query_widget.show_success_message("Sin Resultados", "🔍 No se encontraron facturas con los criterios especificados.")
                 
         except Exception as e:
+            self.controller._logger.error(f"❌ Error en búsqueda de facturas: {e}")
             query_widget = self.tabs_widget.get_query_widget() if self.tabs_widget else None
             if query_widget:
-                query_widget.show_error_message("Error de Búsqueda", str(e))
+                query_widget.show_error_message("Error de Búsqueda", f"Error consultando API: {str(e)}")
     
     def _handle_clear_filters(self):
         """Manejar limpieza de filtros."""
@@ -309,6 +318,33 @@ class DataContaMainWindow(QMainWindow):
             if query_widget:
                 # Delegar al demo handler para mostrar mensaje
                 self.demo_handler.show_clear_filters_demo()
+    
+    def _handle_load_statuses(self):
+        """Manejar carga de estados para dropdown."""
+        try:
+            self.controller._logger.info("🔄 Cargando estados de facturas...")
+            print(f"[DEBUG Dataconta] 🔄 Iniciando carga de estados...")
+            
+            statuses = self.controller.load_invoice_statuses()
+            print(f"[DEBUG Dataconta] 📊 Controlador devolvió {len(statuses)} estados")
+            
+            query_widget = self.tabs_widget.get_query_widget()
+            if query_widget and statuses:
+                print(f"[DEBUG Dataconta] ✅ Widget encontrado, enviando {len(statuses)} estados")
+                query_widget.update_statuses(statuses)
+                self.controller._logger.info(f"✅ {len(statuses)} estados cargados en dropdown")
+            else:
+                print(f"[DEBUG Dataconta] ❌ Widget={query_widget is not None}, estados={len(statuses) if statuses else 0}")
+                self.controller._logger.warning("⚠️ No se encontraron estados para cargar")
+                
+        except Exception as e:
+            print(f"[DEBUG Dataconta] ❌ Error cargando estados: {e}")
+            import traceback
+            print(f"[DEBUG Dataconta] 📋 Traceback: {traceback.format_exc()}")
+            self.controller._logger.error(f"❌ Error cargando estados: {e}")
+            query_widget = self.tabs_widget.get_query_widget() if self.tabs_widget else None
+            if query_widget:
+                query_widget.show_error_message("Error de Carga", f"No se pudieron cargar los estados: {str(e)}")
     
     def _handle_siigo_csv_export(self):
         """Manejar exportación CSV desde Siigo."""
@@ -386,19 +422,17 @@ class DataContaMainWindow(QMainWindow):
     # ---------- Logging Functionality ----------
     def log_message(self, message: str):
         """
-        Centralized logging method that sends messages to LogWidget.
+        Centralized logging method - LogWidget removido, logs disponibles en tab Ayuda.
         
         Args:
             message (str): The message to log
         """
         try:
-            if self.log_widget:
-                self.log_widget.log_message(message)
-            else:
-                # Fallback to console if LogWidget not available
-                from datetime import datetime
-                timestamp = datetime.now().strftime("%H:%M:%S")
-                print(f"[{timestamp}] {message}")
+            # Log to console and app.log file - LogWidget removido por modal en tab Ayuda
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"[{timestamp}] {message}")
+            # TODO: También escribir a app.log si se requiere logging a archivo
         except Exception as e:
             print(f"Error in log_message: {e}")
     
@@ -418,6 +452,21 @@ class DataContaMainWindow(QMainWindow):
         shadow.setOffset(0, 6)
         card.setGraphicsEffect(shadow)
         return card
+    
+    def _load_initial_data(self):
+        """Cargar datos iniciales después de conectar señales."""
+        try:
+            print("[DATACONTA] 🔄 Iniciando carga de datos iniciales...")
+            
+            query_widget = self.tabs_widget.get_query_widget()
+            if query_widget:
+                print("[DATACONTA] ✅ QueryWidget encontrado, solicitando datos iniciales")
+                query_widget.request_initial_data()
+            else:
+                print("[DATACONTA] ❌ No se encontró QueryWidget")
+                
+        except Exception as e:
+            print(f"[DATACONTA] ❌ Error cargando datos iniciales: {e}")
 
 
 # ==================== Factory Function (Inyección de Dependencias) ====================
@@ -499,6 +548,17 @@ def main():
         main_window.show()
         
         print("✅ Aplicación NO Monolítica iniciada correctamente")
+        
+        # Verificar configuración de Siigo API después de mostrar la ventana principal
+        from src.presentation.widgets.ayuda_widget import SiigoConfigDialog
+        
+        # Pequeña pausa para que la ventana principal se renderice completamente
+        app.processEvents()
+        
+        # Auto-abrir configurador de Siigo si es necesario
+        if SiigoConfigDialog.needs_configuration():
+            print("⚙️ Configuración de Siigo API requerida - abriendo configurador...")
+            SiigoConfigDialog.auto_open_if_needed(main_window)
         
         # Ejecutar la aplicación
         return app.exec()
