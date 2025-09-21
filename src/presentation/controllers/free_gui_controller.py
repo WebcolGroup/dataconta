@@ -496,6 +496,10 @@ class FreeGUIController(QObject):
         print(f"DEBUG: 🔍 Tipo comparación recibido: '{tipo_comparacion}'")  # Debug nuevo
         print(f"DEBUG: 🗓️ Fechas comparación: {fecha_desde_comp} - {fecha_hasta_comp}")  # Debug nuevo
         
+        # Show loading indicator
+        if hasattr(self._gui_reference, 'show_loading'):
+            self._gui_reference.show_loading("📊 Generando Estado de Resultados Excel...")
+        
         # Usar asyncio para ejecutar el método asincrónico
         import asyncio
         try:
@@ -516,6 +520,10 @@ class FreeGUIController(QObject):
                 )
             )
         except Exception as e:
+            # Hide loading indicator in case of error
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             print(f"DEBUG: ❌ Error en controlador: {e}")  # Debug temporal
             self._logger.error(f"❌ Error en handle_estado_resultados_excel_request: {e}")
             self.show_error_message(f"Error procesando solicitud de Estado de Resultados Excel: {e}")
@@ -532,6 +540,10 @@ class FreeGUIController(QObject):
         try:
             self._logger.info("📊 Iniciando generación de Estado de Resultados Excel")
             
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📊 Preparando Estado de Resultados...")
+            
             # Importar ReportService y excepciones
             from src.application.services.report_service import ReportService
             from src.domain.exceptions.estado_resultados_exceptions import (
@@ -541,6 +553,10 @@ class FreeGUIController(QObject):
             
             # Crear instancia del servicio
             report_service = ReportService(self._invoice_repository, self._logger, self._file_storage)
+            
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("🗓️ Procesando fechas...")
             
             # Convertir QDate a datetime
             fecha_desde_dt = datetime.strptime(fecha_desde.toString("yyyy-MM-dd"), "%Y-%m-%d")
@@ -554,6 +570,10 @@ class FreeGUIController(QObject):
             if fecha_hasta_comp and fecha_hasta_comp.isValid():
                 fecha_hasta_comp_dt = datetime.strptime(fecha_hasta_comp.toString("yyyy-MM-dd"), "%Y-%m-%d")
             
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📡 Descargando datos contables...")
+            
             # Generar Estado de Resultados Excel
             file_path = await report_service.generar_estado_resultados_excel(
                 fecha_desde_dt,
@@ -562,6 +582,10 @@ class FreeGUIController(QObject):
                 fecha_desde_comp_dt,
                 fecha_hasta_comp_dt
             )
+            
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
             
             # Emitir señal de éxito
             self.estado_resultados_generated.emit(
@@ -572,6 +596,10 @@ class FreeGUIController(QObject):
             self._logger.info(f"✅ Estado de Resultados Excel generado exitosamente: {file_path}")
             
         except DateRangeError as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             error_msg = f"Rango de fechas inválido: {e.message}"
             if e.details:
                 error_msg += f" ({e.details})"
@@ -579,6 +607,10 @@ class FreeGUIController(QObject):
             self.show_error_message(error_msg)
             
         except SiigoAPIError as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             error_msg = f"Error de Siigo API: {e.message}"
             if e.details:
                 error_msg += f"\n\nDetalles técnicos: {e.details}"
@@ -586,6 +618,10 @@ class FreeGUIController(QObject):
             self.show_error_message(f"Error de conexión con Siigo API:\n{e.message}")
             
         except DataValidationError as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             error_msg = f"Error en validación de datos: {e.message}"
             if e.details:
                 error_msg += f" ({e.details})"
@@ -593,6 +629,10 @@ class FreeGUIController(QObject):
             self.show_error_message(f"Los datos contables no son válidos:\n{e.message}")
             
         except ExcelGenerationError as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             error_msg = f"Error generando archivo Excel: {e.message}"
             if e.details:
                 error_msg += f" ({e.details})"
@@ -600,6 +640,10 @@ class FreeGUIController(QObject):
             self.show_error_message(f"No se pudo generar el archivo Excel:\n{e.message}")
             
         except EstadoResultadosError as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             error_msg = f"Error en Estado de Resultados: {e.message}"
             if e.details:
                 error_msg += f" ({e.details})"
@@ -607,6 +651,10 @@ class FreeGUIController(QObject):
             self.show_error_message(f"Error generando Estado de Resultados:\n{e.message}")
             
         except Exception as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             self._logger.error(f"❌ Error inesperado generando Estado de Resultados Excel: {e}")
             self.show_error_message(f"Error inesperado generando Estado de Resultados Excel: {e}")
     
@@ -850,6 +898,14 @@ class FreeGUIController(QObject):
     def refresh_kpis(self) -> None:
         """Refrescar KPIs - replicar funcionalidad exacta de dataconta_free_gui.py."""
         try:
+            # Show loading indicator
+            print(f"🔍 refresh_kpis: _gui_reference type: {type(self._gui_reference)}")
+            print(f"🔍 refresh_kpis: hasattr show_loading: {hasattr(self._gui_reference, 'show_loading')}")
+            if hasattr(self._gui_reference, 'show_loading'):
+                print("🔄 Calling show_loading...")
+                self._gui_reference.show_loading("📊 Calculando KPIs...")
+                print("✅ show_loading called successfully")
+                
             self._logger.info("� Calculando KPIs reales desde Siigo API...")
             
             # Eliminar archivos JSON de KPIs anteriores (como en FREE GUI)
@@ -857,6 +913,10 @@ class FreeGUIController(QObject):
             
             # Calcular KPIs usando la misma lógica que FREE GUI
             kpis_data = self._calculate_real_kpis_like_free_gui()
+            
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
             
             if kpis_data:
                 self._logger.info("✅ KPIs calculados exitosamente, emitiendo señal...")
@@ -880,6 +940,10 @@ class FreeGUIController(QObject):
                 self.show_error_message("❌ Error calculando KPIs reales")
                 
         except Exception as e:
+            # Hide loading indicator in case of error
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             self._logger.error(f"❌ Error refrescando KPIs: {e}")
             self.show_error_message(f"❌ Error calculando KPIs reales:\n{str(e)}")
     
@@ -949,7 +1013,15 @@ class FreeGUIController(QObject):
     def export_csv_real(self, count: int = 100):
         """Exportar facturas reales a CSV."""
         try:
+            # Show loading indicator
+            if hasattr(self._gui_reference, 'show_loading'):
+                self._gui_reference.show_loading("📊 Exportando facturas a CSV...")
+                
             self._logger.info(f"🔄 Iniciando exportación CSV REAL con {count} registros...")
+            
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📡 Obteniendo datos de Siigo...")
             
             # Usar el servicio de exportación existente
             self._logger.info(f"🔄 Llamando _export_service.export_csv_real({count})...")
@@ -960,12 +1032,24 @@ class FreeGUIController(QObject):
             if result.success:
                 self._logger.info(f"✅ Exportación CSV exitosa: {result.file_path}")
                 self.show_success_message(f"Exportación REAL completada: {result.records_count} facturas guardadas en {result.file_path}")
+                
+                # Hide loading indicator
+                if hasattr(self._gui_reference, 'hide_loading'):
+                    self._gui_reference.hide_loading()
             else:
+                # Hide loading indicator
+                if hasattr(self._gui_reference, 'hide_loading'):
+                    self._gui_reference.hide_loading()
+                    
                 self._logger.error(f"❌ Error en servicio CSV: {result.error}")
                 self.show_error_message(f"Error durante la exportación CSV: {result.error or 'Error desconocido'}")
                 raise Exception(f"Servicio reportó fallo: {result.error}")
                 
         except Exception as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             self._logger.error(f"❌ Error exportando CSV: {e}")
             self.show_error_message(f"Error exportando CSV: {e}")
             raise  # Re-lanzar para que la GUI sepa que falló
@@ -996,12 +1080,24 @@ class FreeGUIController(QObject):
     def export_excel_real(self, count: int = 100):
         """Exportar facturas reales a Excel usando datos de Siigo."""
         try:
+            # Show loading indicator
+            if hasattr(self._gui_reference, 'show_loading'):
+                self._gui_reference.show_loading("📊 Exportando facturas a Excel...")
+                
             self._logger.info(f"🔄 Iniciando exportación Excel con {count} registros...")
+            
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📡 Obteniendo datos de Siigo...")
             
             # Usar el método de CSV real del servicio que sí funciona con limit
             result = self._export_service.export_csv_real(count)
             
             if result.success:
+                # Update loading message
+                if hasattr(self._gui_reference, 'update_loading_message'):
+                    self._gui_reference.update_loading_message("💾 Generando archivo Excel...")
+                    
                 # Ahora convertir el CSV a Excel
                 try:
                     import pandas as pd
@@ -1033,14 +1129,30 @@ class FreeGUIController(QObject):
                     self._logger.info(f"✅ Exportación Excel exitosa: {excel_filename}")
                     self.show_success_message(f"Exportación Excel REAL completada: {result.records_count} facturas guardadas en {excel_filename}")
                     
+                    # Hide loading indicator
+                    if hasattr(self._gui_reference, 'hide_loading'):
+                        self._gui_reference.hide_loading()
+                    
                 except Exception as excel_error:
+                    # Hide loading indicator
+                    if hasattr(self._gui_reference, 'hide_loading'):
+                        self._gui_reference.hide_loading()
+                        
                     self._logger.error(f"❌ Error convirtiendo a Excel: {excel_error}")
                     self.show_success_message(f"Exportación CSV exitosa (Excel falló): {result.records_count} facturas guardadas en {result.file_path}")
                     
             else:
+                # Hide loading indicator
+                if hasattr(self._gui_reference, 'hide_loading'):
+                    self._gui_reference.hide_loading()
+                    
                 self.show_error_message(f"Error durante la exportación: {result.error or 'Error desconocido'}")
                 
         except Exception as e:
+            # Hide loading indicator
+            if hasattr(self._gui_reference, 'hide_loading'):
+                self._gui_reference.hide_loading()
+                
             self._logger.error(f"❌ Error exportando Excel: {e}")
             self.show_error_message(f"Error exportando Excel: {e}")
             raise  # Re-lanzar para que la GUI sepa que falló
@@ -1274,100 +1386,84 @@ class FreeGUIController(QObject):
             self._logger.error(f"❌ Error eliminando KPIs antiguos: {e}")
 
     def _calculate_real_kpis_like_free_gui(self) -> Dict[str, Any]:
-        """Calcular KPIs reales replicando exactamente la lógica de dataconta_free_gui.py."""
+        """Calcular KPIs reales delegando al servicio de dominio."""
         try:
-            self._logger.info("📊 ===== INICIANDO _calculate_real_kpis_like_free_gui =====")
-            import os
-            import json
-            import pandas as pd
-            from datetime import datetime, date
+            self._logger.info("📊 ===== INICIANDO cálculo de KPIs =====")
             
-            # Configurar rango para año actual (igual que FREE GUI)
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📊 Preparando cálculo de KPIs...")
+            
+            # Configurar rango para año actual
+            from datetime import datetime, date
             current_year = date.today().year
-            fecha_inicio = f"{current_year}-01-01"
-            fecha_fin = f"{current_year}-12-31"
+            fecha_inicio = datetime(current_year, 1, 1)
+            fecha_fin = datetime(current_year, 12, 31)
             
             self._logger.info(f"📊 Calculando KPIs para el año {current_year}...")
-            self._logger.info(f"📅 Rango de fechas: {fecha_inicio} a {fecha_fin}")
-            self._logger.info(f"🔌 Repositorio disponible: {self._invoice_repository is not None}")
             
-            # Verificar método disponible
-            if hasattr(self._invoice_repository, 'download_invoices_dataframes'):
-                self._logger.info("✅ Método download_invoices_dataframes disponible")
-            else:
-                self._logger.error("❌ Método download_invoices_dataframes NO disponible")
-                return self._get_default_kpis_like_free_gui()
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("📡 Descargando datos de Siigo API...")
             
-            # Usar el adaptador FreeGUI para descargar facturas
-            # El adaptador ya maneja la autenticación y descarga
-            self._logger.info("📥 Descargando facturas desde API...")
-            encabezados_df, detalle_df = self._invoice_repository.download_invoices_dataframes(
-                fecha_inicio=fecha_inicio,
-                fecha_fin=fecha_fin
-            )
+            # DELEGAR AL SERVICIO DE APLICACIÓN (que usa el dominio)
+            result = self._kpi_service.calculate_kpis_for_period(fecha_inicio, fecha_fin)
             
-            self._logger.info(f"📊 Datos descargados - encabezados_df: {encabezados_df is not None}, detalle_df: {detalle_df is not None}")
-            if encabezados_df is not None:
-                self._logger.info(f"📊 Número de facturas descargadas: {len(encabezados_df)}")
-                self._logger.info(f"📊 Columnas disponibles: {list(encabezados_df.columns) if len(encabezados_df.columns) < 20 else 'Muchas columnas'}")
+            # Update loading message
+            if hasattr(self._gui_reference, 'update_loading_message'):
+                self._gui_reference.update_loading_message("💾 Guardando resultados...")
             
-            if encabezados_df is None or len(encabezados_df) == 0:
-                self._logger.warning("⚠️  No hay facturas para calcular KPIs")
-                return self._get_default_kpis_like_free_gui()
+            # Adaptar resultado para compatibilidad con GUI
+            kpis = self._adapt_domain_result_to_legacy_format(result)
             
-            # CALCULAR KPIs EXACTAMENTE COMO EN FREE GUI
-            kpis = {}
-            
-            # 1. Ventas totales = SUM(total)
-            kpis['ventas_totales'] = float(encabezados_df['total'].sum())
-            
-            # 2. Número de facturas emitidas = COUNT(factura_id)
-            kpis['num_facturas'] = len(encabezados_df)
-            
-            # 3. Ticket promedio por factura = SUM(total) / COUNT(factura_id)
-            kpis['ticket_promedio'] = kpis['ventas_totales'] / kpis['num_facturas'] if kpis['num_facturas'] > 0 else 0
-            
-            # 4. Ventas por cliente (CONSOLIDADO POR NIT como en FREE GUI)
-            ventas_consolidadas = encabezados_df.groupby('cliente_nit').agg({
-                'total': 'sum',
-                'cliente_nombre': 'first'
-            }).reset_index()
-            
-            # Limpiar nombres de clientes (igual que FREE GUI)
-            ventas_consolidadas['cliente_display'] = ventas_consolidadas.apply(
-                lambda row: row['cliente_nombre'] if row['cliente_nombre'] != 'Cliente Sin Nombre' 
-                           else f"Cliente NIT: {row['cliente_nit']}", axis=1
-            )
-            
-            # Ordenar por total descendente
-            ventas_por_cliente = ventas_consolidadas.sort_values('total', ascending=False)
-            kpis['ventas_por_cliente'] = ventas_por_cliente.to_dict('records')
-            
-            # Datos adicionales para dashboard (como FREE GUI)
-            if len(ventas_por_cliente) > 0:
-                top_cliente_info = ventas_por_cliente.iloc[0]
-                kpis['top_cliente'] = top_cliente_info['cliente_display']
-                kpis['top_cliente_monto'] = float(top_cliente_info['total'])
-                kpis['top_cliente_nit'] = top_cliente_info['cliente_nit']
-            else:
-                kpis['top_cliente'] = 'N/A'
-                kpis['top_cliente_monto'] = 0
-                
-            kpis['ultima_sync'] = datetime.now().strftime("%H:%M:%S")
-            kpis['estado_sistema'] = 'ACTIVO ✅'
-            
-            # Guardar KPIs en archivo JSON (igual que FREE GUI)
-            self._logger.info("💾 Guardando KPIs en archivo JSON...")
-            self._save_kpis_to_file_like_free_gui(kpis, current_year)
-            self._logger.info("💾 KPIs guardados exitosamente")
-            
-            self._logger.info(f"✅ KPIs calculados: {kpis['num_facturas']} facturas, ${kpis['ventas_totales']:,.0f} en ventas")
-            self._logger.info("✅ ===== FINALIZANDO _calculate_real_kpis_like_free_gui =====")
+            self._logger.info(f"✅ KPIs calculados: {kpis.get('num_facturas', 0)} facturas")
+            self._logger.info("✅ ===== FINALIZANDO cálculo de KPIs =====")
             
             return kpis
             
         except Exception as e:
             self._logger.error(f"❌ Error calculando KPIs: {e}")
+            return self._get_default_kpis_like_free_gui()
+    
+    def _adapt_domain_result_to_legacy_format(self, domain_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Adaptar resultado del dominio al formato esperado por la GUI legacy."""
+        try:
+            # Mapear campos del dominio al formato legacy
+            legacy_kpis = {
+                'ventas_totales': domain_result.get('ventas_totales', 0),
+                'num_facturas': domain_result.get('numero_facturas', 0),
+                'ticket_promedio': domain_result.get('ticket_promedio', 0),
+                'ultima_sync': datetime.now().strftime("%H:%M:%S"),
+                'estado_sistema': domain_result.get('estado_sistema', 'ACTIVO ✅'),
+            }
+            
+            # Procesar ventas por cliente
+            ventas_por_cliente = domain_result.get('ventas_por_cliente', [])
+            legacy_kpis['ventas_por_cliente'] = [
+                {
+                    'cliente_nit': cliente['nit'],
+                    'cliente_display': cliente['nombre_display'],
+                    'total': cliente['total_ventas']
+                }
+                for cliente in ventas_por_cliente
+            ]
+            
+            # Información del cliente top
+            cliente_top = domain_result.get('cliente_top')
+            if cliente_top:
+                legacy_kpis['top_cliente'] = cliente_top.get('nombre', 'N/A')
+                legacy_kpis['top_cliente_monto'] = cliente_top.get('monto', 0)
+                legacy_kpis['top_cliente_nit'] = cliente_top.get('nit', '')
+            else:
+                legacy_kpis['top_cliente'] = 'N/A'
+                legacy_kpis['top_cliente_monto'] = 0
+                legacy_kpis['top_cliente_nit'] = ''
+            
+            return legacy_kpis
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error adaptando resultado del dominio: {e}")
+            return self._get_default_kpis_like_free_gui()
             return self._get_default_kpis_like_free_gui()
     
     def _get_default_kpis_like_free_gui(self) -> Dict[str, Any]:

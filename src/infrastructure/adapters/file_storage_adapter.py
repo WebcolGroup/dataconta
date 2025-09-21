@@ -22,10 +22,28 @@ class FileStorageAdapter(FileStorage):
     def save_data(self, data: Dict[str, Any], filename: str) -> str:
         """Save data to file and return the file path."""
         try:
+            # Handle subdirectories in filename
+            if '/' in filename:
+                filename_parts = filename.split('/')
+                subdirs = filename_parts[:-1]
+                base_filename = filename_parts[-1]
+                
+                # Create subdirectories if they don't exist
+                subdir_path = self._output_directory
+                for subdir in subdirs:
+                    subdir_path = subdir_path / subdir
+                    subdir_path.mkdir(parents=True, exist_ok=True)
+                
+                filename_for_timestamp = base_filename
+                target_directory = subdir_path
+            else:
+                filename_for_timestamp = filename
+                target_directory = self._output_directory
+            
             # Generate filename with timestamp
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            full_filename = f"{filename}_{timestamp}.json"
-            file_path = self._output_directory / full_filename
+            full_filename = f"{filename_for_timestamp}_{timestamp}.json"
+            file_path = target_directory / full_filename
             
             # Save data as JSON
             with open(file_path, 'w', encoding='utf-8') as f:

@@ -1,7 +1,7 @@
 """
 KPI Service - Application Layer
-Servicio para el cálculo de KPIs financieros desde datos de Siigo API.
-Mantiene la lógica de negocio separada de la UI según arquitectura hexagonal.
+Caso de uso para el cálculo de KPIs financieros.
+Orquesta llamadas al dominio sin contener lógica de negocio propia.
 """
 
 import os
@@ -13,11 +13,13 @@ from dataclasses import dataclass
 
 from src.application.ports.interfaces import InvoiceRepository, FileStorage, Logger
 from src.domain.entities.invoice import InvoiceFilter
+from src.domain.entities.kpis import KPIsVentas
+from src.domain.services.kpi_service import KPICalculationService, KPIAnalysisService
 
 
 @dataclass
 class KPIData:
-    """Data class para los KPIs calculados."""
+    """Data class para los KPIs calculados (compatibilidad hacia atrás)."""
     ventas_totales: float
     num_facturas: int
     ticket_promedio: float
@@ -61,280 +63,270 @@ class KPIData:
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
 
 
-class KPIService:
-    """Servicio para cálculo y gestión de KPIs financieros."""
+class KPIApplicationService:
+    """
+    Servicio de aplicación para KPIs.
+    Orquesta operaciones sin contener lógica de negocio.
+    """
     
     def __init__(self, 
-                 invoice_repository: InvoiceRepository, 
-                 file_storage: FileStorage, 
+                 invoice_repository: InvoiceRepository,
+                 file_storage: FileStorage,
+                 kpi_calculation_service: KPICalculationService,
+                 kpi_analysis_service: KPIAnalysisService,
                  logger: Logger):
         self._invoice_repository = invoice_repository
         self._file_storage = file_storage
+        self._kpi_calculation_service = kpi_calculation_service
+        self._kpi_analysis_service = kpi_analysis_service
         self._logger = logger
     
-    def calculate_real_kpis(self, year: Optional[int] = None) -> KPIData:
+    def calculate_kpis_for_period(self, 
+                                 fecha_inicio: datetime, 
+                                 fecha_fin: datetime) -> Dict[str, Any]:
         """
-        Calcular KPIs reales desde datos de Siigo para el año especificado.
+        Calcular KPIs para un período específico.
         
         Args:
-            year: Año para el cálculo (por defecto año actual)
+            fecha_inicio: Fecha de inicio del período
+            fecha_fin: Fecha de fin del período
             
         Returns:
-            KPIData: Datos de KPIs calculados
+            Diccionario con KPIs calculados
         """
         try:
-            if year is None:
-                year = date.today().year
+            self._logger.info(f"📊 Calculando KPIs para período {fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}")
             
-            self._logger.info(f"📊 Calculando KPIs para el año {year}")
+            # 1. Obtener datos del repositorio (Infrastructure)
+            facturas_df = self._obtener_facturas_dataframe(fecha_inicio, fecha_fin)
             
-            # Configurar filtros para el año
-            from datetime import datetime
-            filters = InvoiceFilter(
-                created_start=datetime(year, 1, 1),
-                created_end=datetime(year, 12, 31)
+            if facturas_df is None or len(facturas_df) == 0:
+                self._logger.warning("⚠️ No hay facturas para el período especificado")
+                kpis_vacios = self._kpi_calculation_service.calcular_kpis_ventas(
+                    pd.DataFrame(), fecha_inicio, fecha_fin
+                )
+                return kpis_vacios.to_dict()
+            
+            # 2. Validar datos (Domain)
+            validacion = self._kpi_calculation_service.validar_consistencia_datos(facturas_df)
+            if not validacion['es_valido']:
+                raise ValueError(f"Datos inválidos: {validacion['errores']}")
+            
+            # 3. Calcular KPIs usando servicio de dominio
+            kpis_ventas = self._kpi_calculation_service.calcular_kpis_ventas(
+                facturas_df, fecha_inicio, fecha_fin
             )
             
-            # Obtener facturas del repositorio
-            invoices = self._invoice_repository.get_invoices(filters)
+            # 4. Generar insights (Domain)
+            insights = self._kpi_analysis_service.generar_insights(kpis_ventas)
             
-            if not invoices:
-                self._logger.warning("⚠️ No hay facturas para calcular KPIs")
-                return self._get_default_kpis()
+            # 5. Persistir resultados (Infrastructure)
+            result = kpis_ventas.to_dict()
+            result['insights'] = insights
+            result['validacion'] = validacion
             
-            # Convertir a DataFrames para análisis
-            encabezados_data = []
-            detalle_data = []
+            self._guardar_kpis(result, fecha_inicio, fecha_fin)
             
-            for invoice in invoices:
-                # Datos del encabezado
-                encabezados_data.append({
-                    'factura_id': invoice.id,
-                    'fecha': invoice.date,
-                    'cliente_nombre': invoice.customer.name if invoice.customer else 'Sin Nombre',
-                    'cliente_nit': invoice.customer.identification if invoice.customer else '',
-                    'total': float(invoice.total),
-                    'impuestos': sum(float(tax.value) for tax in invoice.taxes) if invoice.taxes else 0,
-                    'estado': invoice.status,
-                    'payment_status': getattr(invoice, 'payment_status', 'unknown')
-                })
-                
-                # Datos del detalle
-                if invoice.items:
-                    for item in invoice.items:
-                        detalle_data.append({
-                            'factura_id': invoice.id,
-                            'producto_codigo': item.code,
-                            'producto_nombre': item.description,
-                            'cantidad': float(item.quantity),
-                            'precio_unitario': float(item.price),
-                            'subtotal': float(item.quantity) * float(item.price),
-                            'impuestos': sum(float(tax.value) for tax in item.taxes) if item.taxes else 0
-                        })
+            self._logger.info(f"✅ KPIs calculados exitosamente: {kpis_ventas.numero_facturas} facturas")
             
-            encabezados_df = pd.DataFrame(encabezados_data)
-            detalle_df = pd.DataFrame(detalle_data)
-            
-            # Calcular KPIs
-            kpis = self._calculate_kpis_from_dataframes(encabezados_df, detalle_df)
-            
-            # Guardar KPIs
-            self._save_kpis_to_file(kpis.__dict__, year)
-            
-            self._logger.info(f"✅ KPIs calculados: {kpis.num_facturas} facturas, ${kpis.ventas_totales:,.0f} en ventas")
-            
-            return kpis
+            return result
             
         except Exception as e:
             self._logger.error(f"❌ Error calculando KPIs: {e}")
-            return self._get_default_kpis()
+            raise
     
-    def _calculate_kpis_from_dataframes(self, encabezados_df: pd.DataFrame, detalle_df: pd.DataFrame) -> KPIData:
-        """Calcular KPIs desde DataFrames procesados."""
+    def calculate_kpis_for_current_year(self) -> Dict[str, Any]:
+        """Calcular KPIs para el año actual."""
+        current_year = date.today().year
+        fecha_inicio = datetime(current_year, 1, 1)
+        fecha_fin = datetime(current_year, 12, 31)
         
-        # 1. Ventas totales
-        ventas_totales = float(encabezados_df['total'].sum())
-        
-        # 2. Número de facturas
-        num_facturas = len(encabezados_df)
-        
-        # 3. Ticket promedio
-        ticket_promedio = ventas_totales / num_facturas if num_facturas > 0 else 0
-        
-        # 4. Ventas por cliente (consolidado por NIT)
-        ventas_consolidadas = encabezados_df.groupby('cliente_nit').agg({
-            'total': 'sum',
-            'cliente_nombre': 'first'
-        }).reset_index()
-        
-        # Limpiar nombres de clientes
-        ventas_consolidadas['cliente_display'] = ventas_consolidadas.apply(
-            lambda row: row['cliente_nombre'] if row['cliente_nombre'] != 'Sin Nombre' 
-                       else f"Cliente NIT: {row['cliente_nit']}", axis=1
-        )
-        
-        ventas_por_cliente = ventas_consolidadas.sort_values('total', ascending=False)
-        
-        # 5. Ventas por producto/servicio
-        ventas_por_producto = []
-        if len(detalle_df) > 0:
-            productos_agrupados = detalle_df.groupby(['producto_codigo', 'producto_nombre'])['subtotal'].sum().reset_index()
-            ventas_por_producto = productos_agrupados.sort_values('subtotal', ascending=False)
-        
-        # 6. Top 5 clientes
-        top_5_clientes = ventas_por_cliente.head(5).to_dict('records')
-        
-        # 7. Top 5 productos
-        top_5_productos = []
-        if len(detalle_df) > 0:
-            top_productos = detalle_df.groupby(['producto_codigo', 'producto_nombre'])['cantidad'].sum().reset_index()
-            top_5_productos = top_productos.sort_values('cantidad', ascending=False).head(5).to_dict('records')
-        
-        # 8. Participación de impuestos
-        total_impuestos = float(encabezados_df['impuestos'].sum())
-        participacion_impuestos = (total_impuestos / ventas_totales) * 100 if ventas_totales > 0 else 0
-        
-        # 9. Evolución de ventas mensual
-        encabezados_df['fecha'] = pd.to_datetime(encabezados_df['fecha'], errors='coerce')
-        encabezados_df['mes'] = encabezados_df['fecha'].dt.to_period('M')
-        evolucion_mensual = encabezados_df.groupby('mes')['total'].sum().reset_index()
-        evolucion_mensual['mes'] = evolucion_mensual['mes'].astype(str)
-        evolucion_ventas = evolucion_mensual.to_dict('records')
-        
-        # 10. Estados de facturas
-        estados_facturas = encabezados_df.groupby(['estado', 'payment_status']).size().reset_index(name='cantidad')
-        
-        # Datos adicionales para dashboard
-        top_cliente = 'N/A'
-        top_cliente_monto = 0
-        top_cliente_nit = ''
-        top_5_resumen = []
-        
-        if len(ventas_por_cliente) > 0:
-            top_cliente_info = ventas_por_cliente.iloc[0]
-            top_cliente = top_cliente_info['cliente_display']
-            top_cliente_monto = float(top_cliente_info['total'])
-            top_cliente_nit = top_cliente_info['cliente_nit']
-            
-            # Crear resumen del top 5
-            for i in range(min(5, len(ventas_por_cliente))):
-                cliente = ventas_por_cliente.iloc[i]
-                top_5_resumen.append({
-                    'posicion': i + 1,
-                    'nombre': cliente['cliente_display'],
-                    'nit': cliente['cliente_nit'],
-                    'total': float(cliente['total']),
-                    'porcentaje': (float(cliente['total']) / ventas_totales) * 100
-                })
-        
-        return KPIData(
-            ventas_totales=ventas_totales,
-            num_facturas=num_facturas,
-            ticket_promedio=ticket_promedio,
-            ventas_por_cliente=ventas_por_cliente.to_dict('records'),
-            ventas_por_producto=ventas_por_producto.to_dict('records') if len(ventas_por_producto) > 0 else [],
-            top_5_clientes=top_5_clientes,
-            top_5_productos=top_5_productos,
-            participacion_impuestos=participacion_impuestos,
-            evolucion_ventas=evolucion_ventas,
-            estados_facturas=estados_facturas.to_dict('records'),
-            top_cliente=top_cliente,
-            top_cliente_monto=top_cliente_monto,
-            top_cliente_nit=top_cliente_nit,
-            top_5_resumen=top_5_resumen,
-            ultima_sync=datetime.now().strftime("%H:%M:%S"),
-            estado_sistema='ACTIVO ✅'
-        )
+        return self.calculate_kpis_for_period(fecha_inicio, fecha_fin)
     
-    def _save_kpis_to_file(self, kpis_data: Dict[str, Any], year: int) -> str:
-        """Guardar KPIs en archivo JSON."""
+    def _obtener_facturas_dataframe(self, fecha_inicio: datetime, fecha_fin: datetime) -> Optional[pd.DataFrame]:
+        """
+        Obtener facturas como DataFrame desde el repositorio.
+        Adaptador entre dominio y capa de infraestructura.
+        """
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"kpis_siigo_{year}_{timestamp}.json"
+            # Verificar si el repositorio tiene método directo para DataFrame
+            if hasattr(self._invoice_repository, 'download_invoices_dataframes'):
+                fecha_inicio_str = fecha_inicio.strftime('%Y-%m-%d')
+                fecha_fin_str = fecha_fin.strftime('%Y-%m-%d')
+                
+                encabezados_df, _ = self._invoice_repository.download_invoices_dataframes(
+                    fecha_inicio=fecha_inicio_str,
+                    fecha_fin=fecha_fin_str
+                )
+                return encabezados_df
+                
+            else:
+                # Fallback: usar método estándar y convertir a DataFrame
+                filters = InvoiceFilter(
+                    created_start=fecha_inicio,
+                    created_end=fecha_fin
+                )
+                
+                invoices = self._invoice_repository.get_invoices(filters)
+                return self._convert_invoices_to_dataframe(invoices)
+                
+        except Exception as e:
+            self._logger.error(f"❌ Error obteniendo facturas: {e}")
+            return None
+    
+    def _convert_invoices_to_dataframe(self, invoices: List[Any]) -> pd.DataFrame:
+        """Convertir lista de facturas a DataFrame."""
+        if not invoices:
+            return pd.DataFrame()
             
-            kpis_with_meta = {
-                'metadata': {
-                    'generado_en': datetime.now().isoformat(),
-                    'año': year,
-                    'version': 'DataConta FREE v1.0',
-                    'fuente': 'API Siigo'
-                },
-                'kpis': kpis_data
-            }
+        datos = []
+        for invoice in invoices:
+            datos.append({
+                'factura_id': invoice.id,
+                'fecha': invoice.date,
+                'cliente_nombre': invoice.customer.name if invoice.customer else 'Cliente Sin Nombre',
+                'cliente_nit': invoice.customer.identification if invoice.customer else '',
+                'total': float(invoice.total),
+                'estado': invoice.status,
+            })
+        
+        return pd.DataFrame(datos)
+    
+    def _guardar_kpis(self, kpis_data: Dict[str, Any], fecha_inicio: datetime, fecha_fin: datetime) -> None:
+        """Guardar KPIs usando el file storage."""
+        try:
+            timestamp = datetime.now().strftime("%Y_%m%d_%H%M%S")
+            periodo = f"{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}"
+            filename = f"kpis/kpis_calculados_{periodo}_{timestamp}"
             
-            file_path = self._file_storage.save_data(kpis_with_meta, filename)
-            self._logger.info(f"💾 KPIs guardados: {filename}")
-            return file_path
+            file_path = self._file_storage.save_data(kpis_data, filename)
+            self._logger.info(f"💾 KPIs guardados en: {file_path}")
             
         except Exception as e:
             self._logger.error(f"❌ Error guardando KPIs: {e}")
-            return ""
+
+
+# Mantener compatibilidad con código existente
+class KPIService(KPIApplicationService):
+    """Alias para compatibilidad hacia atrás."""
+    
+    def __init__(self, invoice_repository: InvoiceRepository, file_storage: FileStorage, logger: Logger):
+        # Para compatibilidad, crear servicios de dominio internamente
+        from src.domain.services.kpi_service import KPICalculationServiceImpl, KPIAnalysisService
+        
+        kpi_calc_service = KPICalculationServiceImpl()
+        kpi_analysis_service = KPIAnalysisService(kpi_calc_service)
+        
+        super().__init__(
+            invoice_repository=invoice_repository,
+            file_storage=file_storage,
+            kpi_calculation_service=kpi_calc_service,
+            kpi_analysis_service=kpi_analysis_service,
+            logger=logger
+        )
+    
+    def calculate_real_kpis(self, invoices_data: Optional[List[Any]] = None) -> KPIData:
+        """Método para compatibilidad hacia atrás."""
+        try:
+            # Si se pasan datos de facturas, convertirlos
+            if invoices_data:
+                df = self._convert_invoices_to_dataframe(invoices_data)
+                fecha_inicio = datetime.now().replace(month=1, day=1)
+                fecha_fin = datetime.now().replace(month=12, day=31)
+                
+                kpis_ventas = self._kpi_calculation_service.calcular_kpis_ventas(
+                    df, fecha_inicio, fecha_fin
+                )
+                return self._convert_kpis_ventas_to_legacy(kpis_ventas)
+            else:
+                # Calcular para año actual
+                result = self.calculate_kpis_for_current_year()
+                return self._convert_to_legacy_kpidata(result)
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error en calculate_real_kpis: {e}")
+            return self._get_default_kpis()
+    
+    def _convert_to_legacy_kpidata(self, result: Dict[str, Any]) -> KPIData:
+        """Convertir resultado nuevo al formato legacy KPIData."""
+        return KPIData(
+            ventas_totales=result.get('ventas_totales', 0),
+            num_facturas=result.get('numero_facturas', 0),
+            ticket_promedio=result.get('ticket_promedio', 0),
+            ventas_por_cliente=result.get('ventas_por_cliente', []),
+            ventas_por_producto=[],  # No implementado aún
+            top_5_clientes=result.get('ventas_por_cliente', [])[:5],
+            top_5_productos=[],  # No implementado aún
+            participacion_impuestos=0.0,  # No implementado aún
+            evolucion_ventas=[],  # No implementado aún
+            estados_facturas=[],  # No implementado aún
+            top_cliente=result.get('cliente_top', {}).get('nombre', 'N/A') if result.get('cliente_top') else 'N/A',
+            top_cliente_monto=result.get('cliente_top', {}).get('monto', 0) if result.get('cliente_top') else 0,
+            top_cliente_nit=result.get('cliente_top', {}).get('nit', '') if result.get('cliente_top') else '',
+            top_5_resumen=result.get('ventas_por_cliente', [])[:5],
+            ultima_sync=datetime.now().strftime("%H:%M:%S"),
+            estado_sistema=result.get('estado_sistema', 'ACTIVO ✅')
+        )
+    
+    def _convert_kpis_ventas_to_legacy(self, kpis: KPIsVentas) -> KPIData:
+        """Convertir KPIsVentas a KPIData legacy."""
+        return KPIData(
+            ventas_totales=float(kpis.ventas_totales),
+            num_facturas=kpis.numero_facturas,
+            ticket_promedio=float(kpis.ticket_promedio),
+            ventas_por_cliente=[
+                {
+                    'nit': v.nit,
+                    'nombre': v.nombre_display,
+                    'total': float(v.total_ventas),
+                    'facturas': v.numero_facturas
+                }
+                for v in kpis.ventas_por_cliente
+            ],
+            ventas_por_producto=[],
+            top_5_clientes=[
+                {
+                    'nit': v.nit,
+                    'nombre': v.nombre_display,
+                    'total': float(v.total_ventas)
+                }
+                for v in kpis.obtener_top_clientes(5)
+            ],
+            top_5_productos=[],
+            participacion_impuestos=0.0,
+            evolucion_ventas=[],
+            estados_facturas=[],
+            top_cliente=kpis.cliente_top.nombre_display if kpis.cliente_top else 'N/A',
+            top_cliente_monto=float(kpis.cliente_top.total_ventas) if kpis.cliente_top else 0,
+            top_cliente_nit=kpis.cliente_top.nit if kpis.cliente_top else '',
+            top_5_resumen=[
+                {
+                    'cliente': v.nombre_display,
+                    'ventas': float(v.total_ventas)
+                }
+                for v in kpis.obtener_top_clientes(5)
+            ],
+            ultima_sync=kpis.fecha_calculo.strftime("%H:%M:%S"),
+            estado_sistema=kpis.estado_sistema
+        )
     
     def _get_default_kpis(self) -> KPIData:
-        """Obtener KPIs por defecto cuando hay error o no hay datos."""
+        """Obtener KPIs por defecto cuando hay error."""
         return KPIData(
-            ventas_totales=0,
+            ventas_totales=0.0,
             num_facturas=0,
-            ticket_promedio=0,
+            ticket_promedio=0.0,
             ventas_por_cliente=[],
             ventas_por_producto=[],
             top_5_clientes=[],
             top_5_productos=[],
-            participacion_impuestos=0,
+            participacion_impuestos=0.0,
             evolucion_ventas=[],
             estados_facturas=[],
-            top_cliente='Sin datos',
-            top_cliente_monto=0,
+            top_cliente='N/A',
+            top_cliente_monto=0.0,
             top_cliente_nit='',
             top_5_resumen=[],
             ultima_sync=datetime.now().strftime("%H:%M:%S"),
             estado_sistema='SIN DATOS ⚠️'
         )
-    
-    def load_existing_kpis(self) -> Optional[KPIData]:
-        """Cargar KPIs existentes desde el archivo más reciente."""
-        try:
-            import glob
-            
-            kpis_dir = "outputs/kpis"
-            if not os.path.exists(kpis_dir):
-                return None
-            
-            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
-            kpi_files = glob.glob(pattern)
-            
-            if not kpi_files:
-                return None
-            
-            latest_file = max(kpi_files, key=os.path.getmtime)
-            
-            with open(latest_file, 'r', encoding='utf-8') as f:
-                raw_data = json.load(f)
-            
-            # Manejar diferentes formatos
-            if 'kpis' in raw_data and 'metadata' in raw_data:
-                kpis_dict = raw_data['kpis']
-            elif 'ventas_totales' in raw_data:
-                kpis_dict = raw_data
-            else:
-                return None
-            
-            # Preparar datos con valores por defecto para campos faltantes
-            default_kpis = self._get_default_kpis()
-            merged_data = {}
-            
-            # Copiar todos los campos del default
-            for field in KPIData.__dataclass_fields__:
-                merged_data[field] = getattr(default_kpis, field)
-            
-            # Sobrescribir con datos existentes cuando estén disponibles
-            for key, value in kpis_dict.items():
-                if key in KPIData.__dataclass_fields__:
-                    merged_data[key] = value
-            
-            # Convertir dict a KPIData
-            return KPIData(**merged_data)
-            
-        except Exception as e:
-            self._logger.error(f"❌ Error cargando KPIs: {e}")
-            return None
