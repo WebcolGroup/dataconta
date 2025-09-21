@@ -1,0 +1,36 @@
+[MASTER]
+jobs=1
+load-plugins=
+persistent=yes
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods
+    R0913,  # too-many-arguments
+    W0613,  # unused-argument
+    C0103,  # invalid-name
+    R0902,  # too-many-instance-attributes
+    R0801,  # duplicate-code
+
+[FORMAT]
+max-line-length=88
+max-module-lines=1000
+indent-string='    '
+
+[DESIGN]
+max-args=7
+max-locals=15
+max-returns=6
+max-branches=12
+max-statements=50
+max-parents=7
+max-attributes=10
+min-public-methods=1
+max-public-methods=20
+max-bool-expr=5
+
+[TYPECHECK]
+ignored-modules=PySide6,qt_material
+ignored-classes=PySide6

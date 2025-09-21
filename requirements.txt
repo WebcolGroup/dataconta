@@ -1,22 +1,49 @@
-# DATACONTA - Sistema Avanzado de Gestión - Requirements
+# DataConta FREE - Dependencias de producción
+# Versión: 1.0.0-free
+# Fecha: 2025-09-20
 
-# Core dependencies
-requests>=2.31.0
-python-dotenv>=1.0.0
-
-# Data processing dependencies
-pandas>=2.0.0
-openpyxl>=3.1.0
-
-# GUI dependencies (PySide6 for modern Qt interface)
-PySide6>=6.7.0
+# === INTERFAZ GRÁFICA ===
+PySide6==6.9.2
+PySide6-Addons==6.9.2
+PySide6-Essentials==6.9.2
 qt-material>=2.14.0
 
-# Development dependencies (optional)
-pytest>=7.4.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.5.0
+# === ANÁLISIS DE DATOS ===
+pandas==2.3.2
+numpy==2.3.2
+openpyxl==3.1.5
 
-# Additional utilities
-pathlib2>=2.3.7; python_version < '3.4'
+# === VISUALIZACIÓN (Opcional) ===
+matplotlib==3.10.5
+seaborn==0.13.2
+
+# === REPORTES ===
+reportlab==4.4.3
+
+# === UTILIDADES ===
+requests==2.32.4
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.1
+
+# === TESTING (Desarrollo) ===
+pytest==8.4.1
+pytest-cov==6.2.1
+pytest-mock>=3.10.0
+
+# === CALIDAD DE CÓDIGO (Desarrollo) ===
+black==25.1.0
+flake8==7.3.0
+mypy==1.17.1
+isort>=5.12.0
+pylint>=2.17.0
+
+# === SEGURIDAD (Desarrollo) ===
+bandit>=1.7.5
+safety>=2.3.0
+
+# === CONSTRUCCIÓN (Desarrollo) ===
+pyinstaller>=5.13.0
+
+# === COMPATIBILIDAD ===
+setuptools>=65.0.0
+wheel>=0.41.0
