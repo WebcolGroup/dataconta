@@ -32,6 +32,7 @@ from src.application.services.export_service import ExportService
 from src.infrastructure.adapters.free_gui_siigo_adapter import FreeGUISiigoAdapter
 from src.infrastructure.adapters.file_storage_adapter import FileStorageAdapter
 from src.infrastructure.adapters.logger_adapter import LoggerAdapter
+from src.infrastructure.factories.application_factory import DataContaApplicationFactory
 
 # ==================== Imports - Sistema de Addons ====================
 from src.infrastructure.factories.addon_factory import AddonFactory
@@ -42,12 +43,13 @@ from src.presentation.widgets.export_widget import ExportWidget
 from src.presentation.widgets.query_widget import QueryWidget
 from src.presentation.widgets.tabs_widget import TabsWidget
 from src.presentation.widgets.demo_handler_widget import DemoHandlerWidget
+from src.presentation.widgets.loading_widget import LoadingMixin
 # LogWidget removido - logs ahora disponibles en modal de tab Ayuda
 
 
 # ==================== Clase Principal - DataConta Main Window ====================
 
-class DataContaMainWindow(QMainWindow):
+class DataContaMainWindow(QMainWindow, LoadingMixin):
     """
     Ventana principal NO monolítica de DataConta FREE.
     
@@ -67,6 +69,9 @@ class DataContaMainWindow(QMainWindow):
         super().__init__()
         self.controller = controller
         self.controller.set_gui_reference(self)
+        
+        # Initialize loading system from LoadingMixin
+        self.init_loading()
         
         # Componente de navegación especializado
         self.tabs_widget: Optional[TabsWidget] = None
@@ -478,50 +483,24 @@ def create_dataconta_app() -> DataContaMainWindow:
     """
     Factory function para crear la aplicación con arquitectura hexagonal NO monolítica.
     
-    NUEVO: Ahora incluye sistema de addons integrado de forma transparente.
-    
-    Implementa inyección de dependencias completa siguiendo principios SOLID.
+    NUEVO: Ahora usa el factory pattern completo para inyección de dependencias.
     
     Returns:
-        DataContaMainWindow: Instancia NO monolítica de la aplicación con addons
+        DataContaMainWindow: Instancia configurada de la aplicación
     """
-    # Configurar logging
-    logging.basicConfig(level=logging.INFO)
-    
-    # Crear adaptador de logger (Infrastructure Layer)
-    logger = LoggerAdapter(name="dataconta_non_monolithic")
-    logger.info("🏗️ Iniciando DataConta")
-    
-    # ==================== NUEVO: SISTEMA DE ADDONS ====================
-    # Inicializar sistema de addons (completamente opcional y no-invasivo)
-    addon_system = None
-    
     try:
-        logger.info("🔌 Inicializando sistema de addons...")
+        # Crear controller usando el factory (arquitectura hexagonal)
+        controller = DataContaApplicationFactory.create_controller_for_main_window()
         
-        # Crear sistema de addons usando factory pattern
-        addon_system = AddonFactory.create_complete_addon_system(
-            repository_path="addons/",
-            logger=logger
-        )
+        # Crear la ventana principal con el controller inyectado
+        main_window = DataContaMainWindow(controller)
         
-        # Cargar addons disponibles
-        loaded_addons = addon_system.load_all_addons()
-        active_addons = addon_system.get_active_addons()
+        return main_window
         
-        if active_addons:
-            logger.info(f"✅ Sistema de addons inicializado: {len(active_addons)} addons activos")
-            for addon in active_addons:
-                logger.info(f"  📦 {addon.get_name()} v{addon.get_version()}")
-        else:
-            logger.info("ℹ️  Sistema de addons listo (no hay addons instalados)")
-            
     except Exception as e:
-        logger.warning(f"⚠️  Sistema de addons no disponible: {e}")
-        # Continúa normalmente sin addons - NO es un error crítico
-        addon_system = None
-    
-    # Crear adaptadores de infraestructura
+        # Fallback logging en caso de error
+        print(f"❌ Error creando aplicación: {e}")
+        raise
     siigo_adapter = FreeGUISiigoAdapter(logger=logger)
     file_storage = FileStorageAdapter(output_directory="./outputs", logger=logger)
     

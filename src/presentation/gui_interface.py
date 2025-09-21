@@ -17,9 +17,10 @@ from PySide6.QtGui import QFont, QPalette
 from src.application.ports.interfaces import UserInterface, Logger
 from src.domain.entities.invoice import Invoice, InvoiceFilter
 from src.infrastructure.config.dynamic_menu_config import DynamicMenuManager
+from src.presentation.widgets.loading_widget import LoadingMixin
 
 
-class DataContaMainWindow(QMainWindow):
+class DataContaMainWindow(QMainWindow, LoadingMixin):
     """Main window for DATACONTA GUI application."""
     
     def __init__(self, logger: Logger, license_manager=None):
@@ -28,6 +29,9 @@ class DataContaMainWindow(QMainWindow):
         self._license_manager = license_manager
         self.setWindowTitle("DATACONTA - Sistema Avanzado de Gestión")
         self.setMinimumSize(1000, 700)
+        
+        # Initialize loading system
+        self.init_loading()
         
         # Inicializar gestor de menús dinámico
         self.menu_manager = DynamicMenuManager("menu_config.json")
