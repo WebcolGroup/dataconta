@@ -968,8 +968,10 @@ class FreeGUIController(QObject):
             if existing_kpis:
                 self._current_kpis = existing_kpis
                 # Emitir señal sin mostrar mensajes (carga silenciosa)
-                self.kpis_calculated.emit(existing_kpis.to_dict())
-                self._logger.info(f"✅ KPIs cargados automáticamente: ${existing_kpis.ventas_totales:,.2f}")
+                # existing_kpis ya es un dict, no necesita .to_dict()
+                self.kpis_calculated.emit(existing_kpis)
+                ventas_totales = existing_kpis.get('ventas_totales', 0)
+                self._logger.info(f"✅ KPIs cargados automáticamente: ${ventas_totales:,.2f}")
             else:
                 self._logger.info("📂 No hay KPIs existentes - se mostrarán valores por defecto")
                 
@@ -986,8 +988,9 @@ class FreeGUIController(QObject):
             
             if existing_kpis:
                 self._current_kpis = existing_kpis
-                self.update_summary_stats(existing_kpis.to_dict())
-                self.kpis_calculated.emit(existing_kpis.to_dict())
+                # existing_kpis ya es un dict, no necesita .to_dict()
+                self.update_summary_stats(existing_kpis)
+                self.kpis_calculated.emit(existing_kpis)
                 self.show_success_message("KPIs cargados correctamente")
             else:
                 self.show_warning_message("No se encontraron KPIs guardados. Calculando nuevos...")

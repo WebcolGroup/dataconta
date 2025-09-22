@@ -236,12 +236,8 @@ class DataContaMainWindow(QMainWindow, LoadingMixin):
         reportes_widget = self.tabs_widget.get_reportes_widget()
         if reportes_widget:
             print("🔗 Conectando señales de reportes...")
-            reportes_widget.estado_resultados_requested.connect(
-                self.controller.handle_estado_resultados_request
-            )
-            print("✅ Señal estado_resultados_requested conectada")
             
-            # Conectar nueva señal de Estado de Resultados Excel
+            # Conectar señal de Estado de Resultados Excel
             if hasattr(reportes_widget, 'estado_resultados_excel_requested'):
                 reportes_widget.estado_resultados_excel_requested.connect(
                     self.controller.handle_estado_resultados_excel_request

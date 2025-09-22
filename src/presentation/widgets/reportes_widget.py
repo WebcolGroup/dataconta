@@ -252,7 +252,6 @@ class ReportesWidget(QWidget):
     """
     
     # Señales para comunicación con el controlador
-    estado_resultados_requested = Signal(QDate, QDate)  # fecha_desde, fecha_hasta
     estado_resultados_excel_requested = Signal(QDate, QDate, str)  # fecha_desde, fecha_hasta, tipo_comparacion (Excel)
     
     def __init__(self, parent: Optional[QWidget] = None):
@@ -354,11 +353,7 @@ class ReportesWidget(QWidget):
         reportes_layout.setSpacing(15)
         reportes_layout.setContentsMargins(15, 25, 15, 15)
         
-        # Botón Estado de Resultados (existente)
-        self.btn_estado_resultados = self._create_estado_resultados_button()
-        reportes_layout.addWidget(self.btn_estado_resultados)
-        
-        # Botón Estado de Resultados Excel (nuevo)
+        # Botón Estado de Resultados Excel
         self.btn_estado_resultados_excel = self._create_estado_resultados_excel_button()
         reportes_layout.addWidget(self.btn_estado_resultados_excel)
         
@@ -383,44 +378,7 @@ class ReportesWidget(QWidget):
         
         return reportes_group
     
-    def _create_estado_resultados_button(self) -> QPushButton:
-        """Crear botón para generar estado de resultados."""
-        btn = QPushButton("📈 Generar Estado de Resultados")
-        btn.setToolTip(
-            "🔍 Generar estado de resultados financiero:\n"
-            "• Ingresos y gastos del período seleccionado\n"
-            "• Análisis basado en facturas de Siigo API\n"
-            "• Exportación en formato JSON y CSV\n"
-            "• Datos organizados por categorías\n\n"
-            "📅 Asegúrese de seleccionar un rango de fechas válido"
-        )
-        btn.clicked.connect(self._handle_estado_resultados)
-        btn.setStyleSheet("""
-            QPushButton { 
-                background-color: #28a745;
-                color: white;
-                padding: 15px 25px; 
-                border: none;
-                border-radius: 8px; 
-                font-weight: bold; 
-                font-size: 13pt;
-                text-align: left;
-                min-height: 50px;
-            }
-            QPushButton:hover { 
-                background-color: #218838;
-                transform: translateY(-2px);
-            }
-            QPushButton:pressed {
-                background-color: #1e7e34;
-                transform: translateY(0px);
-            }
-            QPushButton:disabled {
-                background-color: #6c757d;
-                color: #adb5bd;
-            }
-        """)
-        return btn
+
     
     def _create_estado_resultados_excel_button(self) -> QPushButton:
         """Crear botón para generar estado de resultados en Excel."""
@@ -473,67 +431,25 @@ class ReportesWidget(QWidget):
     def _validate_form(self) -> None:
         """Validar formulario y habilitar/deshabilitar botones."""
         is_valid = self.date_filter.validate_range()
-        self.btn_estado_resultados.setEnabled(is_valid)
+        self.btn_estado_resultados_excel.setEnabled(is_valid)
         
         if not is_valid:
-            self.btn_estado_resultados.setToolTip(
-                "⚠️ Seleccione un rango de fechas válido para generar el reporte"
+            self.btn_estado_resultados_excel.setToolTip(
+                "⚠️ Seleccione un rango de fechas válido para generar el reporte Excel"
             )
         else:
             # Restaurar tooltip original
-            self.btn_estado_resultados.setToolTip(
-                "🔍 Generar estado de resultados financiero:\n"
-                "• Ingresos y gastos del período seleccionado\n"
-                "• Análisis basado en facturas de Siigo API\n"
-                "• Exportación en formato JSON y CSV\n"
-                "• Datos organizados por categorías\n\n"
-                "📅 Asegúrese de seleccionar un rango de fechas válido"
+            self.btn_estado_resultados_excel.setToolTip(
+                "🔍 Generar Estado de Resultados en formato Excel:\n"
+                "• Conforme a normativa tributaria colombiana\n"
+                "• Análisis basado en datos de Siigo API\n"
+                "• Exportación en formato .xlsx profesional\n"
+                "• Incluye comparación entre períodos\n"
+                "• Cálculos automáticos de márgenes\n\n"
+                "📅 Configure las fechas y opciones de comparación"
             )
     
-    def _handle_estado_resultados(self) -> None:
-        """Manejar clic en generar estado de resultados."""
-        # Validar rango de fechas
-        if not self.date_filter.validate_range():
-            QMessageBox.warning(
-                self,
-                "⚠️ Rango de Fechas Inválido",
-                "Por favor, seleccione un rango de fechas válido antes de generar el reporte.\n\n"
-                "• La fecha 'Desde' debe ser anterior a la fecha 'Hasta'\n"
-                "• El rango no debe exceder 2 años\n"
-                "• Ambas fechas deben ser válidas"
-            )
-            return
-        
-        # Obtener rango de fechas
-        fecha_desde, fecha_hasta = self.date_filter.get_date_range()
-        
-        # Confirmar con el usuario
-        reply = QMessageBox.question(
-            self,
-            "📈 Generar Estado de Resultados",
-            f"🔍 <b>Confirmar generación de reporte</b><br><br>"
-            f"📅 <b>Período:</b> {fecha_desde.toString('dd/MM/yyyy')} - {fecha_hasta.toString('dd/MM/yyyy')}<br>"
-            f"📊 <b>Días:</b> {fecha_desde.daysTo(fecha_hasta) + 1} días<br><br>"
-            f"🔄 El sistema consultará las facturas de Siigo API para el período seleccionado "
-            f"y generará un estado de resultados detallado.<br><br>"
-            f"¿Desea continuar?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.Yes
-        )
-        
-        if reply == QMessageBox.Yes:
-            # Emitir señal para solicitar el reporte
-            self.estado_resultados_requested.emit(fecha_desde, fecha_hasta)
-            
-            # Mostrar mensaje de proceso iniciado
-            QMessageBox.information(
-                self,
-                "🚀 Reporte en Proceso",
-                "📊 <b>Generando Estado de Resultados</b><br><br>"
-                "🔄 El sistema está procesando los datos de Siigo API...<br><br>"
-                "⏳ Este proceso puede tomar unos momentos dependiendo del volumen de datos.<br><br>"
-                "📁 El reporte se guardará en la carpeta 'outputs' cuando esté listo."
-            )
+
     
     def _handle_estado_resultados_excel(self) -> None:
         """Manejar clic en generar estado de resultados Excel."""

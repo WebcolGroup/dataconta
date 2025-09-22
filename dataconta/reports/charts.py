@@ -115,12 +115,13 @@ def plot_ventas_por_cliente(data: List[Dict[str, Any]], top_n: int = 10) -> str:
         # Consolidar por NIT para evitar duplicados (como en la GUI)
         clientes_consolidados = {}
         for item in data:
-            nit = item.get('cliente_nit', 'N/A')
-            nombre = item.get('cliente_nombre', f'Cliente NIT: {nit}')
-            total = item.get('total', 0)
+            nit = item.get('nit', 'N/A')
+            nombre = item.get('nombre', f'Cliente NIT: {nit}')
+            nombre_display = item.get('nombre_display', nombre)
+            total = item.get('total_ventas', 0)
             
-            # Usar nombre real si está disponible, sino usar NIT
-            display_name = nombre if nombre != "Cliente Sin Nombre" else f'Cliente NIT: {nit}'
+            # Usar nombre display si está disponible, sino usar nombre, sino usar NIT
+            display_name = nombre_display if nombre_display != "Cliente Sin Nombre" else f'Cliente NIT: {nit}'
             
             if nit in clientes_consolidados:
                 clientes_consolidados[nit]['total'] += total
@@ -403,8 +404,9 @@ def generate_all_charts(kpis_file_path: str) -> Dict[str, str]:
         with open(kpis_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        kpis = data.get('kpis', {})
-        if not kpis:
+        # Los datos están directamente en el JSON, no dentro de una clave 'kpis'
+        kpis = data
+        if not kpis or not isinstance(kpis, dict):
             raise ValueError("No se encontraron datos de KPIs en el archivo")
         
         print(f"📊 Generando visualizaciones desde: {kpis_file_path}")

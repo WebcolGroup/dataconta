@@ -6,6 +6,7 @@ Orquesta llamadas al dominio sin contener lógica de negocio propia.
 
 import os
 import json
+import glob
 import pandas as pd
 from datetime import datetime, date
 from typing import Dict, List, Any, Optional
@@ -143,6 +144,60 @@ class KPIApplicationService:
         
         return self.calculate_kpis_for_period(fecha_inicio, fecha_fin)
     
+    def load_existing_kpis(self) -> Optional[Dict[str, Any]]:
+        """
+        Cargar KPIs existentes desde el archivo más reciente.
+        Busca archivos en outputs/kpis/ con formatos kpis_calculados_* o kpis_siigo_*.
+        
+        Returns:
+            Dict con los KPIs si se encuentra archivo, None si no hay archivos
+        """
+        try:
+            kpis_dir = "outputs/kpis"
+            
+            if not os.path.exists(kpis_dir):
+                self._logger.warning(f"⚠️ Directorio {kpis_dir} no existe")
+                return None
+            
+            # Buscar ambos tipos de archivos KPIs
+            patterns = [
+                os.path.join(kpis_dir, "kpis_calculados_*.json"),
+                os.path.join(kpis_dir, "kpis_siigo_*.json")
+            ]
+            
+            kpi_files = []
+            for pattern in patterns:
+                kpi_files.extend(glob.glob(pattern))
+            
+            if not kpi_files:
+                self._logger.info("ℹ️ No se encontraron archivos KPIs existentes")
+                return None
+            
+            # Obtener el archivo más reciente
+            latest_file = max(kpi_files, key=os.path.getmtime)
+            self._logger.info(f"📂 Cargando KPIs desde: {latest_file}")
+            
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                raw_data = json.load(f)
+            
+            # Manejar diferentes formatos de archivo
+            if 'kpis' in raw_data and 'metadata' in raw_data:
+                # Formato API real con estructura compleja
+                kpis_data = raw_data['kpis']
+            elif 'ventas_totales' in raw_data:
+                # Formato simple directo
+                kpis_data = raw_data
+            else:
+                self._logger.warning("⚠️ Formato de archivo KPIs no reconocido")
+                return None
+            
+            self._logger.info("✅ KPIs existentes cargados correctamente")
+            return kpis_data
+            
+        except Exception as e:
+            self._logger.error(f"❌ Error cargando KPIs existentes: {e}")
+            return None
+    
     def _obtener_facturas_dataframe(self, fecha_inicio: datetime, fecha_fin: datetime) -> Optional[pd.DataFrame]:
         """
         Obtener facturas como DataFrame desde el repositorio.
@@ -193,11 +248,16 @@ class KPIApplicationService:
         return pd.DataFrame(datos)
     
     def _guardar_kpis(self, kpis_data: Dict[str, Any], fecha_inicio: datetime, fecha_fin: datetime) -> None:
-        """Guardar KPIs usando el file storage."""
+        """Guardar KPIs usando el file storage con formato consistente."""
         try:
-            timestamp = datetime.now().strftime("%Y_%m%d_%H%M%S")
-            periodo = f"{fecha_inicio.strftime('%Y%m%d')}_{fecha_fin.strftime('%Y%m%d')}"
-            filename = f"kpis/kpis_calculados_{periodo}_{timestamp}"
+            # Usar formato consistente con el dashboard: kpis_siigo_YYYY_timestamp
+            year = fecha_inicio.year
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"kpis/kpis_siigo_{year}_{timestamp}"
+            
+            # Limpiar archivos KPIs antiguos antes de guardar (mantener solo 1)
+            if hasattr(self._file_storage, 'clean_old_files'):
+                self._file_storage.clean_old_files("kpis", "kpis_*.json", keep_latest=0)
             
             file_path = self._file_storage.save_data(kpis_data, filename)
             self._logger.info(f"💾 KPIs guardados en: {file_path}")

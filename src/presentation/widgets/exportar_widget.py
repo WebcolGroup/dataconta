@@ -235,21 +235,21 @@ class ExportarWidget(QWidget):
         excel_siigo_btn.clicked.connect(self.export_siigo_excel_with_filters)
         buttons_layout.addWidget(excel_siigo_btn, 0, 1)
         
-        # Botón de prueba rápida
-        test_btn = QPushButton("⚡ Prueba Rápida (Sin filtros)")
+        # Botón de exportación del mes actual
+        test_btn = QPushButton("📅 Exportar Facturas del Mes")
         test_btn.setToolTip(
-            "⚡ Prueba de conectividad API Siigo:\n"
-            "• Descarga facturas recientes\n"
-            "• Sin aplicar filtros\n"
-            "• Valida autenticación y conexión\n"
-            "• Genera CSV de prueba\n\n"
+            "📅 Exportar facturas del mes actual a Excel:\n"
+            "• Descarga facturas del mes en curso\n"
+            "• Máximo 500 facturas para rendimiento\n"
+            "• Genera Excel con 2 hojas (Encabezados + Detalle)\n"
+            "• Sin filtros adicionales\n\n"
             "🔧 Perfecto para:\n"
-            "• Verificar configuración API\n"
-            "• Probar credenciales\n"
-            "• Validar estructura de datos"
+            "• Reportes mensuales rápidos\n"
+            "• Análisis del período actual\n"
+            "• Datos optimizados para Excel"
         )
         test_btn.setStyleSheet(siigo_btn_style.replace("#1976d2", "#ff9800").replace("#1565c0", "#f57c00"))
-        test_btn.clicked.connect(self.test_connection_requested.emit)
+        test_btn.clicked.connect(self.export_current_month_invoices)
         buttons_layout.addWidget(test_btn, 1, 0, 1, 2)
         
         return buttons_group
@@ -985,6 +985,103 @@ class ExportarWidget(QWidget):
     def log_message(self, message: str):
         """Log message (placeholder - debe ser conectado al sistema de logs)."""
         print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
+    
+    def export_current_month_invoices(self):
+        """
+        Exportar facturas del mes actual a Excel con máximo 500 facturas.
+        
+        Siguiendo principios SOLID:
+        - SRP: Una sola responsabilidad (exportar mes actual)
+        - OCP: Extensible sin modificar código existente
+        - DIP: Usa método de descarga existente
+        """
+        try:
+            from datetime import datetime
+            import calendar
+            
+            # Calcular fechas del mes actual
+            now = datetime.now()
+            year = now.year
+            month = now.month
+            
+            # Primer día del mes
+            first_day = datetime(year, month, 1)
+            fecha_inicio = first_day.strftime("%Y-%m-%d")
+            
+            # Último día del mes
+            last_day_of_month = calendar.monthrange(year, month)[1]
+            last_day = datetime(year, month, last_day_of_month)
+            fecha_fin = last_day.strftime("%Y-%m-%d")
+            
+            self.log_message(f"📅 Exportando facturas del mes actual: {fecha_inicio} a {fecha_fin}")
+            self.log_message("📊 Máximo 500 facturas para optimizar rendimiento")
+            
+            # Usar método de descarga existente (DIP - Inversión de dependencias)
+            encabezados_df, detalle_df = self.download_invoices(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                cliente_id=None,
+                cc=None,
+                nit=None,
+                estado=None
+            )
+            
+            if encabezados_df is None or detalle_df is None:
+                return
+            
+            # Aplicar límite de 500 facturas si es necesario
+            if len(encabezados_df) > 500:
+                self.log_message(f"⚠️ Limitando a 500 facturas (había {len(encabezados_df)})")
+                encabezados_df = encabezados_df.head(500)
+                
+                # Filtrar detalle correspondiente a las facturas limitadas
+                facturas_ids = set(encabezados_df['factura_id'])
+                detalle_df = detalle_df[detalle_df['factura_id'].isin(facturas_ids)]
+            
+            if len(encabezados_df) == 0:
+                QMessageBox.information(
+                    self,
+                    "Sin Resultados",
+                    f"No se encontraron facturas para el mes actual ({now.strftime('%B %Y')})."
+                )
+                return
+            
+            # Generar archivo Excel
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            month_name = now.strftime("%B_%Y").lower()
+            os.makedirs("outputs", exist_ok=True)
+            excel_file = f"outputs/facturas_mes_actual_{month_name}_{timestamp}.xlsx"
+            
+            # Escribir Excel con dos hojas
+            import pandas as pd
+            with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+                encabezados_df.to_excel(writer, sheet_name='Encabezados', index=False)
+                detalle_df.to_excel(writer, sheet_name='Detalle', index=False)
+            
+            file_size = os.path.getsize(excel_file) / 1024
+            
+            self.log_message(f"✅ Excel del mes generado: {os.path.basename(excel_file)} ({file_size:.1f} KB)")
+            
+            QMessageBox.information(
+                self,
+                "✅ Exportación del Mes Exitosa",
+                f"Facturas del mes actual exportadas a Excel:\n\n"
+                f"📅 Período: {now.strftime('%B %Y')}\n"
+                f"📊 Encabezados: {len(encabezados_df)} facturas\n"
+                f"📋 Detalle: {len(detalle_df)} items\n\n"
+                f"📁 Archivo: {os.path.basename(excel_file)}\n"
+                f"💾 Tamaño: {file_size:.1f} KB\n"
+                f"📄 Hojas: 'Encabezados' y 'Detalle'\n\n"
+                f"✅ Datos reales desde API Siigo"
+            )
+            
+        except Exception as e:
+            self.log_message(f"❌ Error exportando mes actual: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error exportando facturas del mes actual:\n{e}"
+            )
     
     # ==================== Métodos de UI ====================
     

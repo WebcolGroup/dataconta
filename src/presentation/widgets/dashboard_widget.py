@@ -502,18 +502,18 @@ class DashboardWidget(QWidget):
                 table.setItem(i, 0, pos_item)
                 
                 # NIT/CC
-                nit_valor = str(cliente['cliente_nit'])
+                nit_valor = str(cliente['nit'])
                 nit_item = QTableWidgetItem(nit_valor)
                 nit_item.setTextAlignment(Qt.AlignCenter)
                 table.setItem(i, 1, nit_item)
                 
                 # Nombre del cliente (usar el display que viene del JSON)
-                cliente_display = cliente.get('cliente_display', f"Cliente NIT: {cliente['cliente_nit']}")
+                cliente_display = cliente.get('nombre_display', cliente.get('nombre', f"Cliente NIT: {cliente['nit']}"))
                 nombre_item = QTableWidgetItem(cliente_display)
                 table.setItem(i, 2, nombre_item)
                 
                 # Monto total
-                monto = float(cliente['total'])
+                monto = float(cliente['total_ventas'])
                 monto_item = QTableWidgetItem(f"${monto:,.0f}")
                 monto_item.setTextAlignment(Qt.AlignRight)
                 table.setItem(i, 3, monto_item)
@@ -570,22 +570,22 @@ class DashboardWidget(QWidget):
             
             # Footer con estadísticas reales calculadas
             cliente_top1 = top_10[0] if top_10 else None
-            top3_total = sum(float(c['total']) for c in top_10[:3])
-            top5_total = sum(float(c['total']) for c in top_10[:5])
-            top10_total = sum(float(c['total']) for c in top_10)
+            top3_total = sum(float(c['total_ventas']) for c in top_10[:3])
+            top5_total = sum(float(c['total_ventas']) for c in top_10[:5])
+            top10_total = sum(float(c['total_ventas']) for c in top_10)
             
             footer_stats = f"""
             📈 ESTADÍSTICAS REALES (desde outputs/kpis JSON):
             
-            🥇 Cliente #1: {cliente_top1.get('cliente_display', 'N/A') if cliente_top1 else 'N/A'}
-            💰 Líder con: ${float(cliente_top1['total']):,.0f} ({((float(cliente_top1['total']) / ventas_totales) * 100):.1f}% del total)
+            🥇 Cliente #1: {cliente_top1.get('nombre_display', cliente_top1.get('nombre', 'N/A')) if cliente_top1 else 'N/A'}
+            💰 Líder con: ${float(cliente_top1['total_ventas']):,.0f} ({((float(cliente_top1['total_ventas']) / ventas_totales) * 100):.1f}% del total)
             
             📊 Concentración de ventas:
             • Top 3 clientes: ${top3_total:,.0f} ({(top3_total / ventas_totales * 100):.1f}% del total)
             • Top 5 clientes: ${top5_total:,.0f} ({(top5_total / ventas_totales * 100):.1f}% del total)
             • Top 10 clientes: ${top10_total:,.0f} ({(top10_total / ventas_totales * 100):.1f}% del total)
             
-            🎯 Clientes VIP+: {sum(1 for c in top_10 if float(c['total']) >= 15000000)} de {len(top_10)} clientes
+            🎯 Clientes VIP+: {sum(1 for c in top_10 if float(c['total_ventas']) >= 15000000)} de {len(top_10)} clientes
             """
             
             footer = QLabel(footer_stats)

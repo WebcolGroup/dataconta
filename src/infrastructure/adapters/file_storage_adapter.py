@@ -112,3 +112,51 @@ class FileStorageAdapter(FileStorage):
         except Exception as e:
             self._logger.error(f"Failed to create output directory: {e}")
             raise Exception(f"Directory creation error: {e}")
+    
+    def clean_old_files(self, subdirectory: str, pattern: str = "*", keep_latest: int = 1) -> int:
+        """
+        Limpiar archivos antiguos en un subdirectorio, manteniendo solo los más recientes.
+        
+        Args:
+            subdirectory: Subdirectorio dentro del output_directory (ej: "kpis")
+            pattern: Patrón de archivos a considerar (ej: "kpis_*.json")
+            keep_latest: Número de archivos más recientes a mantener
+            
+        Returns:
+            Número de archivos eliminados
+        """
+        try:
+            target_dir = self._output_directory / subdirectory
+            
+            if not target_dir.exists():
+                self._logger.debug(f"Directory {target_dir} does not exist, no cleanup needed")
+                return 0
+            
+            # Obtener archivos que coinciden con el patrón
+            files = list(target_dir.glob(pattern))
+            
+            if len(files) <= keep_latest:
+                self._logger.debug(f"Found {len(files)} files, keeping all (limit: {keep_latest})")
+                return 0
+            
+            # Ordenar archivos por fecha de modificación (más recientes primero)
+            files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+            
+            # Eliminar archivos antiguos
+            files_to_delete = files[keep_latest:]
+            deleted_count = 0
+            
+            for file_path in files_to_delete:
+                try:
+                    file_path.unlink()
+                    self._logger.info(f"🗑️ Deleted old file: {file_path.name}")
+                    deleted_count += 1
+                except Exception as e:
+                    self._logger.error(f"Failed to delete {file_path}: {e}")
+            
+            self._logger.info(f"✅ Cleanup completed: {deleted_count} files deleted, {keep_latest} kept")
+            return deleted_count
+            
+        except Exception as e:
+            self._logger.error(f"Failed to clean old files in {subdirectory}: {e}")
+            return 0
