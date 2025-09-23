@@ -1,22 +1,28 @@
 """
-Dashboard Widget - Componente UI especializado para KPIs y dashboard
-Parte de la refactorización del monolito dataconta_free_gui_refactored.py
+Dashboard Widget - Componente UI refactorizado para KPIs y dashboard
+Implementación modular siguiendo principios SOLID
 
-Responsabilidad única: UI del dashboard con KPIs, delegando toda la lógica al controlador
+Responsabilidad única: Coordinación de componentes del dashboard
+Componentes modulares: ChartFactory, KPIWidget, TooltipManager
 """
 
 import os
-import json
 import glob
+import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel,
     QPushButton, QFrame, QSizePolicy, QMessageBox, QGraphicsDropShadowEffect,
-    QTableWidget, QTableWidgetItem
+    QTableWidget, QTableWidgetItem, QTabWidget, QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QColor
+
+# Importar componentes modulares del dashboard
+from .charts.chart_factory import ChartFactory
+from .kpi_widget import KPIWidget
+from .tooltip_manager import TooltipManager
 
 # Importar módulo de visualizaciones
 try:
@@ -29,14 +35,14 @@ except ImportError as e:
 
 class DashboardWidget(QWidget):
     """
-    Widget especializado para el dashboard de KPIs.
+    Widget especializado para el dashboard de KPIs refactorizado.
     
-    Principios SOLID:
-    - SRP: Solo maneja la UI del dashboard
-    - OCP: Extensible para nuevos KPIs
+    Principios SOLID aplicados:
+    - SRP: Coordina componentes del dashboard
+    - OCP: Extensible mediante componentes modulares
     - LSP: Substituble como cualquier QWidget
     - ISP: Interfaz específica para dashboard
-    - DIP: Depende de abstracciones (signals)
+    - DIP: Usa abstracciones (ChartFactory, KPIWidget, TooltipManager)
     """
     
     # Signals para comunicación con el controlador (inversión de dependencias)
@@ -46,17 +52,68 @@ class DashboardWidget(QWidget):
     
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        
+        # Inicializar componentes modulares
+        self.chart_factory = ChartFactory()
+        self.kpi_widget = KPIWidget(self)
+        
+        # Widgets del dashboard
         self.kpi_widgets: Dict[str, QLabel] = {}
         self.kpi_layout: Optional[QGridLayout] = None
+        
         self.init_ui()
+        
+        # Cargar KPIs automáticamente si existen datos JSON
+        self.load_initial_kpis()
     
     def init_ui(self):
-        """Inicializar interfaz del dashboard."""
+        """Inicializar interfaz del dashboard con tabs."""
         layout = QVBoxLayout(self)
-
-        # KPIs principales (en card)
-        kpis = self.create_kpis_section()
-        layout.addWidget(self._wrap_in_card(kpis))
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Crear QTabWidget principal
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #c0c0c0;
+                background-color: #f8f9fa;
+            }
+            QTabBar::tab {
+                background: #e9ecef;
+                padding: 12px 24px;
+                margin-right: 2px;
+                border: 1px solid #dee2e6;
+                border-bottom: none;
+                border-radius: 8px 8px 0 0;
+                font-size: 11px;
+                font-weight: bold;
+                color: #495057;
+            }
+            QTabBar::tab:selected {
+                background: #007bff;
+                color: white;
+                border-color: #007bff;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #f8f9fa;
+                border-color: #007bff;
+            }
+        """)
+        
+        layout.addWidget(self.tab_widget)
+        
+        # Crear las dos pestañas principales
+        self.create_basic_kpis_tab()
+        self.create_analytics_tab()
+    
+    def create_basic_kpis_tab(self):
+        """Crear la primera tab con KPIs básicos usando componentes modulares y visualización de tarjetas."""
+        basic_tab = QWidget()
+        layout = QVBoxLayout(basic_tab)
+        
+        # KPIs Section con tarjetas visuales (restaurado del backup)
+        kpis_section = self.create_kpis_section()
+        layout.addWidget(kpis_section)
 
         # Botones de acción (en card)
         actions = self.create_action_buttons()
@@ -65,9 +122,119 @@ class DashboardWidget(QWidget):
         # Información de upgrade (en card)
         upgrade = self.create_upgrade_section()
         layout.addWidget(self._wrap_in_card(upgrade))
+        
+        # Aplicar tooltip educativo a la pestaña
+        tab_index = self.tab_widget.addTab(basic_tab, "📊 KPIs Básicos")
+        TooltipManager.apply_tab_tooltips(self.tab_widget, tab_index, 'dashboard')
+    
+    def create_analytics_tab(self):
+        """Crear la segunda tab con gráficos analíticos usando ChartFactory."""
+        analytics_tab = QWidget()
+        layout = QVBoxLayout(analytics_tab)
+        
+        # Scroll area para gráficos
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget contenedor de gráficos
+        charts_widget = QWidget()
+        charts_layout = QGridLayout(charts_widget)
+        charts_layout.setSpacing(15)
+        charts_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Crear los 6 gráficos usando ChartFactory modular
+        self.create_modular_chart_widgets(charts_layout)
+        
+        scroll_area.setWidget(charts_widget)
+        layout.addWidget(scroll_area)
+        
+        # Aplicar tooltip educativo a la pestaña
+        tab_index = self.tab_widget.addTab(analytics_tab, "📈 Analytics")
+        TooltipManager.apply_tab_tooltips(self.tab_widget, tab_index, 'analytics')
+    
+    def create_modular_chart_widgets(self, layout: QGridLayout):
+        """
+        Crear los 6 widgets de gráficos usando ChartFactory modular.
+        
+        Refactorización SOLID:
+        - SRP: ChartFactory se encarga solo de crear gráficos
+        - DIP: Usa abstracciones (métodos de factory)
+        """
+        # Obtener definiciones de gráficos de ChartFactory
+        chart_definitions = self.chart_factory.get_chart_definitions()
+        
+        for title, create_method, row, col in chart_definitions:
+            # Crear gráfico usando ChartFactory
+            chart_canvas = create_method()
+            
+            if chart_canvas:
+                # Crear wrapper con título
+                chart_widget = self.create_chart_wrapper(title, chart_canvas)
+                layout.addWidget(chart_widget, row, col)
+                
+                # Aplicar tooltip educativo basado en el tipo de gráfico
+                chart_type = self._get_chart_type_from_title(title)
+                TooltipManager.apply_chart_tooltips(chart_canvas, chart_type)
+            else:
+                # Widget de placeholder si no hay datos
+                placeholder = self.create_chart_placeholder(title)
+                layout.addWidget(placeholder, row, col)
+    
+    def _get_chart_type_from_title(self, title: str) -> str:
+        """Mapear título de gráfico a tipo para tooltips."""
+        title_to_type = {
+            "📊 Ventas vs Facturas": "sales_invoices",
+            "👥 Top 10 Clientes": "top_clients",
+            "🥧 Concentración de Ventas": "sales_distribution",
+            "🎯 Mayor Ticket Promedio": "avg_ticket",
+            "💹 Ventas vs Facturas (Bubble)": "bubble_chart",
+            "📈 Pareto de Clientes": "pareto"
+        }
+        return title_to_type.get(title, "sales_invoices")
+    
+    def create_chart_wrapper(self, title: str, canvas) -> QWidget:
+        """
+        Crear wrapper para gráfico con título.
+        
+        Args:
+            title: Título del gráfico
+            canvas: Canvas de matplotlib
+            
+        Returns:
+            QWidget: Widget contenedor del gráfico
+        """
+        wrapper = QFrame()
+        wrapper.setFrameStyle(QFrame.Shape.StyledPanel)
+        wrapper.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                margin: 2px;
+            }
+        """)
+        
+        layout = QVBoxLayout(wrapper)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        
+        # Título del gráfico
+        title_label = QLabel(title)
+        title_font = QFont("Segoe UI", 11, QFont.Weight.Bold)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #1976d2; margin-bottom: 5px;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # Canvas del gráfico
+        layout.addWidget(canvas)
+        
+        return wrapper
     
     def create_kpis_section(self) -> QWidget:
-        """Crear sección de KPIs replicando exactamente el diseño de dataconta_free_gui.py."""
+        """Crear sección de KPIs replicando exactamente el diseño del archivo backup."""
         kpi_group = QGroupBox("📊 KPIs Básicos - Versión FREE")
         kpi_group.setStyleSheet("QGroupBox{ border: none; font-weight: 700; }")
         self.kpi_layout = QGridLayout(kpi_group)
@@ -76,7 +243,7 @@ class DashboardWidget(QWidget):
         self.kpi_layout.setHorizontalSpacing(12)
         self.kpi_layout.setVerticalSpacing(12)
         
-        # KPIs con datos por defecto y colores exactos de dataconta_free_gui.py
+        # KPIs con datos por defecto y colores exactos del archivo backup
         kpi_data = {
             "ventas_totales": 0,
             "num_facturas": 0,
@@ -94,7 +261,7 @@ class DashboardWidget(QWidget):
             ("🔄 Última Actualización", f"{kpi_data.get('ultima_sync', 'Ahora')}", "#9c27b0")
         ]
         
-        # Crear widgets para cada KPI con el diseño exacto de FREE GUI
+        # Crear widgets para cada KPI con el diseño exacto del backup
         for i, (label, value, color) in enumerate(kpis):
             kpi_frame = QFrame()
             kpi_frame.setFrameStyle(QFrame.Box)
@@ -111,76 +278,118 @@ class DashboardWidget(QWidget):
             kpi_layout_inner = QVBoxLayout(kpi_frame)
             
             label_widget = QLabel(label)
-            label_widget.setStyleSheet("color: white; font-size: 11px; font-weight: bold;")
+            label_widget.setStyleSheet("color: white; font-size: 10px; font-weight: bold;")
             label_widget.setWordWrap(True)
             
             value_widget = QLabel(value)
-            value_widget.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+            value_widget.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
             value_widget.setWordWrap(True)
             
-            # Guardar referencia al widget de valor para actualizarlo después (usando nombres de FREE GUI)
+            # Guardar referencia al widget de valor para actualizarlo después (usando nombres del backup)
             self.kpi_widgets[kpi_names[i]] = value_widget
             
             kpi_layout_inner.addWidget(label_widget)
             kpi_layout_inner.addWidget(value_widget)
             
-            # Distribuir KPIs en múltiples filas para mejor responsive (3 por fila como FREE GUI)
+            # Distribuir KPIs en múltiples filas para mejor responsive (3 por fila como backup)
             row = i // 3  # Máximo 3 KPIs por fila
             col = i % 3
             self.kpi_layout.addWidget(kpi_frame, row, col)
         
         return kpi_group
     
-    def _get_kpi_columns(self) -> int:
-        """Definir 3 columnas para mostrar 3 KPIs por fila (estilo FREE exacto)."""
-        return 3
+    def create_chart_placeholder(self, title: str) -> QWidget:
+        """
+        Crear placeholder cuando no hay datos para el gráfico.
+        
+        Args:
+            title: Título del gráfico
+            
+        Returns:
+            QWidget: Widget placeholder
+        """
+        placeholder = QFrame()
+        placeholder.setFrameStyle(QFrame.Shape.StyledPanel)
+        placeholder.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                margin: 2px;
+            }
+        """)
+        
+        layout = QVBoxLayout(placeholder)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Título
+        title_label = QLabel(title)
+        title_font = QFont("Segoe UI", 11, QFont.Weight.Bold)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #6c757d;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # Mensaje de no datos
+        no_data_label = QLabel("📊\n\nDatos no disponibles\nGenerar KPIs para mostrar gráfico")
+        no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        no_data_label.setStyleSheet("color: #6c757d; font-size: 12px; line-height: 1.5;")
+        layout.addWidget(no_data_label)
+        
+        layout.addStretch()
+        
+        return placeholder
     
     def create_action_buttons(self) -> QWidget:
-        """Crear botones de acción replicando el diseño exacto de dataconta_free_gui.py."""
+        """Crear botones de acción replicando el diseño exacto del archivo backup."""
         container = QWidget()
         buttons_layout = QVBoxLayout(container)
         
-        # Botón actualizar KPIs con texto y estilo exactos de FREE GUI
+        # Botón actualizar KPIs con texto y estilo exactos del backup
         update_btn = QPushButton("🔄 Actualizar KPIs con Datos Reales")
         update_btn.setStyleSheet("""
             QPushButton {
                 background-color: #4caf50;
                 color: white;
                 border: none;
-                padding: 10px;
-                border-radius: 5px;
+                border-radius: 8px;
+                padding: 15px 25px;
+                font-size: 14px;
                 font-weight: bold;
-                margin: 10px 0px;
+                margin: 5px;
             }
             QPushButton:hover {
                 background-color: #45a049;
             }
+            QPushButton:pressed {
+                background-color: #3e8e41;
+            }
         """)
-        # Agregar logging al botón
-        def on_kpis_button_click():
-            print("🔴 BOTÓN KPIs PRESIONADO - emitiendo señal refresh_kpis_requested")
-            self.refresh_kpis_requested.emit()
-            print("📡 Señal refresh_kpis_requested emitida")
+        update_btn.clicked.connect(self.refresh_kpis_requested.emit)
+        buttons_layout.addWidget(update_btn)
         
-        update_btn.clicked.connect(on_kpis_button_click)
-        
-        # Botón TOP clientes con diseño exacto de FREE GUI
-        top_clients_btn = QPushButton("👑 Ver TOP 10 Clientes Detallado")
-        top_clients_btn.setStyleSheet("""
+        # Botón TOP clientes con diseño exacto de FREE GUI y mismo ancho que el botón de arriba
+        clients_btn = QPushButton("👑 Ver TOP 10 Clientes Detallado")
+        clients_btn.setStyleSheet("""
             QPushButton {
                 background-color: #ff9800;
                 color: white;
                 border: none;
-                padding: 10px;
-                border-radius: 5px;
+                border-radius: 8px;
+                padding: 15px 25px;
+                font-size: 14px;
                 font-weight: bold;
-                margin: 5px 0px;
+                margin: 5px;
             }
             QPushButton:hover {
                 background-color: #f57c00;
             }
+            QPushButton:pressed {
+                background-color: #ef6c00;
+            }
         """)
-        top_clients_btn.clicked.connect(self.show_top_clients_detail)
+        clients_btn.clicked.connect(self.show_top_clients_detail)
+        buttons_layout.addWidget(clients_btn)
         
         # Botón para generar visualizaciones KPI (solo si están disponibles)
         if CHARTS_AVAILABLE:
@@ -190,13 +399,17 @@ class DashboardWidget(QWidget):
                     background-color: #9c27b0;
                     color: white;
                     border: none;
-                    padding: 10px;
-                    border-radius: 5px;
+                    padding: 15px 25px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    margin: 5px 0px;
+                    font-size: 14px;
+                    margin: 5px;
                 }
                 QPushButton:hover {
                     background-color: #7b1fa2;
+                }
+                QPushButton:pressed {
+                    background-color: #6a1b9a;
                 }
             """)
             charts_btn.setToolTip(
@@ -210,11 +423,8 @@ class DashboardWidget(QWidget):
                 "📊 Usa datos reales del JSON de KPIs"
             )
             charts_btn.clicked.connect(self.generate_kpis_visualizations)
-        
-        buttons_layout.addWidget(update_btn)
-        buttons_layout.addWidget(top_clients_btn)
-        if CHARTS_AVAILABLE:
             buttons_layout.addWidget(charts_btn)
+        
         return container
     
     def create_upgrade_section(self) -> QWidget:
@@ -243,7 +453,7 @@ class DashboardWidget(QWidget):
             padding: 15px; 
             border-radius: 8px;
             border: 2px solid #4caf50;
-            font-size: 13px;
+            font-size: 12px;
         """)
         
         upgrade_btn = QPushButton("🏆 Upgrade a DataConta PRO")
@@ -255,7 +465,7 @@ class DashboardWidget(QWidget):
                 padding: 15px 30px;
                 border-radius: 8px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 13px;
             }
             QPushButton:hover {
                 background-color: #388e3c;
@@ -267,116 +477,124 @@ class DashboardWidget(QWidget):
         upgrade_layout.addWidget(upgrade_btn)
         return upgrade_group
     
-    def update_kpis(self, kpi_data: Dict[str, Any], show_message: bool = True):
-        """
-        Actualizar KPIs en la interfaz usando las mismas claves que dataconta_free_gui.py.
-        Incluye actualización de "Última Actualización" como en FREE GUI.
-        
-        Args:
-            kpi_data: Diccionario con datos de KPIs del controlador
-            show_message: Si mostrar mensaje de confirmación (False para carga automática)
-        """
+    def generate_kpis_visualizations(self):
+        """Generar visualizaciones automáticas de los KPIs usando datos del JSON."""
         try:
-            print("🔥 ===== DASHBOARD update_kpis LLAMADO =====")
-            print(f"📊 Datos KPI recibidos: {kpi_data is not None}")
-            print(f"📊 Mostrar mensaje: {show_message}")
-            if kpi_data:
-                print(f"📊 Claves KPI: {list(kpi_data.keys())}")
-                print(f"📊 Ventas totales: {kpi_data.get('ventas_totales', 'No disponible')}")
-            
-            from datetime import datetime
-            
-            # Determinar texto de última actualización según el contexto
-            if show_message:
-                ultima_sync_text = f"Actualizado {datetime.now().strftime('%H:%M:%S')}"
-            else:
-                # Para carga automática, mostrar "Cargado" en lugar de "Actualizado"
-                ultima_sync_text = f"Cargado {datetime.now().strftime('%H:%M:%S')}"
-            
-            # Mapear datos usando las mismas claves que FREE GUI
-            kpi_mappings = {
-                "ventas_totales": f"${kpi_data.get('ventas_totales', 0):,.0f}",
-                "num_facturas": f"{kpi_data.get('num_facturas', 0):,}",
-                "ticket_promedio": f"${kpi_data.get('ticket_promedio', 0):,.0f}",
-                "top_cliente": f"{kpi_data.get('top_cliente', 'Calculando...')[:25]}",
-                "ultima_sync": ultima_sync_text
-            }
-            
-            print(f"🎯 Mapeo KPI creado: {len(kpi_mappings)} elementos")
-            print(f"🎯 Widgets disponibles: {list(self.kpi_widgets.keys())}")
-            
-            # Actualizar widgets existentes usando las claves exactas de FREE GUI
-            widgets_actualizados = 0
-            for kpi_name, kpi_value in kpi_mappings.items():
-                if kpi_name in self.kpi_widgets:
-                    print(f"✅ Actualizando widget {kpi_name}: {kpi_value}")
-                    self.kpi_widgets[kpi_name].setText(str(kpi_value))
-                    widgets_actualizados += 1
-                else:
-                    print(f"⚠️  Widget {kpi_name} no encontrado")
-            
-            print(f"📊 Total widgets actualizados: {widgets_actualizados}/{len(kpi_mappings)}")
-            
-            self.update()
-            print("🔄 Widget actualizado visualmente")
-            
-            # Mostrar mensaje solo si está habilitado (no durante carga automática)
-            if show_message:
-                QMessageBox.information(
+            if not CHARTS_AVAILABLE:
+                QMessageBox.warning(
                     self, 
-                    "KPIs Actualizados", 
-                    f"✅ KPIs calculados y actualizados en dashboard!\n\n"
-                    f"💰 Ventas Totales: ${kpi_data.get('ventas_totales', 0):,.0f}\n"
-                    f"📄 Total Facturas: {kpi_data.get('num_facturas', 0):,}\n"
-                    f"🎯 Ticket Promedio: ${kpi_data.get('ticket_promedio', 0):,.0f}\n"
-                    f"👤 Top Cliente: {kpi_data.get('top_cliente', 'N/A')[:30]}\n\n"
-                    f"📁 KPIs guardados en: outputs/kpis/"
+                    "Función No Disponible",
+                    "El módulo de visualizaciones no está disponible.\n\n"
+                    "Para instalar las dependencias necesarias:\n"
+                    "pip install matplotlib seaborn\n\n"
+                    "Luego reinicie la aplicación."
                 )
-            else:
-                print("📊 Carga automática completada - sin mensaje")
+                return
+            
+            print("📊 Iniciando generación de visualizaciones KPI...")
+            
+            # Buscar el archivo KPI más reciente
+            kpis_dir = "outputs/kpis"
+            if not os.path.exists(kpis_dir):
+                QMessageBox.warning(
+                    self,
+                    "Sin Datos KPI", 
+                    "No se encontraron datos de KPIs.\n\n"
+                    "Primero actualice los KPIs presionando:\n"
+                    "'🔄 Actualizar KPIs con Datos Reales'"
+                )
+                return
+            
+            # Encontrar archivo KPI más reciente
+            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
+            import glob
+            kpi_files = glob.glob(pattern)
+            
+            if not kpi_files:
+                QMessageBox.warning(
+                    self,
+                    "Sin Archivos KPI",
+                    "No se encontraron archivos JSON de KPIs.\n\n" 
+                    "Genere los KPIs primero con el botón:\n"
+                    "'🔄 Actualizar KPIs con Datos Reales'"
+                )
+                return
+            
+            # Usar el archivo más reciente
+            latest_kpi_file = max(kpi_files, key=os.path.getmtime)
+            
+            print(f"📊 Usando archivo KPI: {os.path.basename(latest_kpi_file)}")
+            
+            # Generar todas las visualizaciones usando el módulo charts
+            generated_files = generate_all_charts(latest_kpi_file)
+            
+            if not generated_files:
+                QMessageBox.warning(
+                    self,
+                    "Error en Visualizaciones",
+                    "No se pudieron generar las visualizaciones.\n"
+                    "Revise los logs para más detalles."
+                )
+                return
+            
+            # Mostrar mensaje de éxito con detalles
+            charts_list = "\n".join([
+                f"• {chart_type.replace('_', ' ').title()}: {os.path.basename(path)}"
+                for chart_type, path in generated_files.items()
+            ])
+            
+            print(f"✅ Se generaron {len(generated_files)} visualizaciones exitosamente")
+            
+            QMessageBox.information(
+                self,
+                "✅ Visualizaciones Generadas",
+                f"Se generaron {len(generated_files)} gráficas de KPIs:\n\n"
+                f"{charts_list}\n\n"
+                f"📁 Ubicación: outputs/charts/\n"
+                f"📊 Datos desde: {os.path.basename(latest_kpi_file)}\n\n"
+                f"Las gráficas incluyen:\n"
+                f"📈 Evolución de ventas mensual\n"
+                f"👑 Top 10 clientes consolidados\n" 
+                f"📦 Top 10 productos por ventas\n"
+                f"📊 Distribución estados facturas\n"
+                f"💰 Composición ventas vs impuestos"
+            )
             
         except Exception as e:
-            print(f"❌ Error actualizando KPIs: {e}")
-            if show_message:
-                QMessageBox.warning(self, "Error", f"Error actualizando KPIs: {str(e)}")
+            print(f"❌ Error generando visualizaciones: {str(e)}")
+            QMessageBox.critical(
+                self, 
+                "Error de Visualización",
+                f"Error al generar visualizaciones:\n\n{str(e)}\n\n"
+                f"Verifique que matplotlib y seaborn estén instalados."
+            )
     
-    def show_success_message(self, message: str):
-        """Mostrar mensaje de éxito."""
-        QMessageBox.information(self, "Éxito", message)
-    
-    def show_error_message(self, message: str):
-        """Mostrar mensaje de error."""
-        QMessageBox.warning(self, "Error", message)
-    
-    def show_kpis_loading_message(self):
-        """Mostrar mensaje de carga cuando se actualiza KPIs (similar a FREE GUI)."""
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Actualizando KPIs")
-        msg_box.setText("🚀 Calculando KPIs reales desde Siigo API...")
-        msg_box.setInformativeText("Por favor espere mientras se procesan los datos.")
-        msg_box.setStandardButtons(QMessageBox.NoButton)
-        msg_box.show()
-        return msg_box
-    
-    def resizeEvent(self, event):
-        """Manejar redimensionamiento para diseño responsive."""
-        super().resizeEvent(event)
-        # Aquí se puede agregar lógica de reorganización si es necesario
-
-    # ---------- Helpers de UI (cards y sombras) ----------
-    def _wrap_in_card(self, inner: QWidget) -> QFrame:
-        """Envuelve un widget en una 'card' con esquinas redondeadas y sombra."""
+    def _wrap_in_card(self, widget: QWidget) -> QFrame:
+        """Envolver widget en una tarjeta con estilo."""
         card = QFrame()
-        card.setObjectName("CardFrame")
-        lay = QVBoxLayout(card)
-        lay.setContentsMargins(16, 16, 16, 16)
-        lay.addWidget(inner)
-
+        card.setFrameStyle(QFrame.Shape.StyledPanel)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 12px;
+                padding: 15px;
+                margin: 8px;
+            }
+        """)
+        
+        # Añadir sombra
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(24)
-        shadow.setColor(QColor(0, 0, 0, 50))
-        shadow.setOffset(0, 6)
+        shadow.setBlurRadius(10)
+        shadow.setXOffset(2)
+        shadow.setYOffset(2)
+        shadow.setColor(QColor(0, 0, 0, 30))
         card.setGraphicsEffect(shadow)
+        
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.addWidget(widget)
+        
         return card
     
     def load_existing_kpis_sync(self) -> Optional[Dict[str, Any]]:
@@ -457,7 +675,7 @@ class DashboardWidget(QWidget):
             
             📊 Total de clientes únicos: {len(ventas_clientes)}
             💰 Ventas totales: ${ventas_totales:,.0f}
-            � Total facturas: {num_facturas:,}
+            📄 Total facturas: {num_facturas:,}
             🕒 Última actualización: {ultima_sync}
             📅 Fuente: API Siigo - {datetime.now().strftime('%Y-%m-%d')}
             """)
@@ -628,7 +846,7 @@ class DashboardWidget(QWidget):
             self.top_clients_window = dialog  # Mantener referencia
             
             # Log con datos reales del JSON
-            cliente_principal = cliente_top1.get('cliente_display', 'N/A') if cliente_top1 else 'N/A'
+            cliente_principal = cliente_top1.get('nombre_display', 'N/A') if cliente_top1 else 'N/A'
             print(f"🏆 Mostrado TOP {len(top_10)} clientes REALES - Cliente #1: {cliente_principal}")
             
         except Exception as e:
@@ -636,185 +854,134 @@ class DashboardWidget(QWidget):
             print(f"❌ Error en show_top_clients_detail con datos JSON: {e}")
             import traceback
             traceback.print_exc()
-    
-    def generate_kpis_visualizations(self):
-        """Generar visualizaciones automáticas de los KPIs usando datos del JSON."""
+
+    def update_kpis(self, kpi_data: Dict[str, Any] = None, show_message: bool = True):
+        """
+        Actualizar KPIs combinando datos del JSON con las tarjetas visuales.
+        
+        Args:
+            kpi_data: Diccionario con datos de KPIs del controlador (opcional)
+            show_message: Si mostrar mensaje de confirmación
+        """
         try:
-            if not CHARTS_AVAILABLE:
-                QMessageBox.warning(
-                    self, 
-                    "Función No Disponible",
-                    "El módulo de visualizaciones no está disponible.\n\n"
-                    "Para instalar las dependencias necesarias:\n"
-                    "pip install matplotlib seaborn\n\n"
-                    "Luego reinicie la aplicación."
-                )
-                return
+            print("🔥 ===== DASHBOARD update_kpis REFACTORIZADO CON TARJETAS =====")
+            print(f"📊 Datos KPI recibidos: {kpi_data is not None}")
+            print(f"📊 Mostrar mensaje: {show_message}")
             
-            print("📊 Iniciando generación de visualizaciones KPI...")
+            # Si no se pasan datos, intentar cargar desde JSON (como hace KPIWidget)
+            if not kpi_data:
+                kpi_files = glob.glob("outputs/kpis/kpis_siigo_*.json")
+                if kpi_files:
+                    latest_file = max(kpi_files, key=os.path.getmtime)
+                    try:
+                        with open(latest_file, 'r', encoding='utf-8') as f:
+                            kpi_data = json.load(f)
+                        print(f"📂 Datos cargados desde: {latest_file}")
+                    except Exception as e:
+                        print(f"⚠️ Error cargando datos JSON: {e}")
             
-            # Buscar el archivo KPI más reciente
-            kpis_dir = "outputs/kpis"
-            if not os.path.exists(kpis_dir):
-                QMessageBox.warning(
-                    self,
-                    "Sin Datos KPI", 
-                    "No se encontraron datos de KPIs.\n\n"
-                    "Primero actualice los KPIs presionando:\n"
-                    "'🔄 Actualizar KPIs con Datos Reales'"
-                )
-                return
+            if kpi_data:
+                print(f"📊 Claves KPI recibidas: {list(kpi_data.keys())}")
             
-            # Encontrar archivo KPI más reciente
-            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
-            kpi_files = glob.glob(pattern)
+            # Actualizar las tarjetas visuales de KPIs con los datos reales
+            if kpi_data and hasattr(self, 'kpi_widgets') and self.kpi_widgets:
+                print("🎨 Actualizando tarjetas visuales de KPIs...")
+                
+                # Obtener datos con valores por defecto seguros
+                ventas_totales = kpi_data.get('ventas_totales', 0)
+                num_facturas = kpi_data.get('numero_facturas', kpi_data.get('num_facturas', 0))
+                ticket_promedio = kpi_data.get('ticket_promedio', 0)
+                
+                # Para el top cliente, revisar varias posibles claves
+                top_cliente = "Calculando..."
+                if 'cliente_top' in kpi_data and kpi_data['cliente_top']:
+                    if isinstance(kpi_data['cliente_top'], dict):
+                        top_cliente = kpi_data['cliente_top'].get('name', 'Calculando...')
+                    else:
+                        top_cliente = str(kpi_data['cliente_top'])
+                elif 'top_cliente' in kpi_data:
+                    top_cliente = str(kpi_data['top_cliente'])
+                
+                # Mapear datos para las tarjetas visuales
+                kpi_mappings = {
+                    "ventas_totales": f"${ventas_totales:,.0f}",
+                    "num_facturas": f"{num_facturas:,}",
+                    "ticket_promedio": f"${ticket_promedio:,.0f}",
+                    "top_cliente": f"{top_cliente[:25]}",
+                    "ultima_sync": f"Actualizado {datetime.now().strftime('%H:%M:%S')}"
+                }
+                
+                # Actualizar cada tarjeta visual
+                widgets_actualizados = 0
+                for kpi_name, kpi_value in kpi_mappings.items():
+                    if kpi_name in self.kpi_widgets:
+                        self.kpi_widgets[kpi_name].setText(str(kpi_value))
+                        widgets_actualizados += 1
+                        print(f"    🎨 {kpi_name}: {kpi_value}")
+                
+                print(f"📊 Total tarjetas actualizadas: {widgets_actualizados}")
+            else:
+                print("⚠️ No hay datos de KPI o no existen las tarjetas visuales")
             
-            if not kpi_files:
-                QMessageBox.warning(
-                    self,
-                    "Sin Archivos KPI",
-                    "No se encontraron archivos JSON de KPIs.\n\n" 
-                    "Genere los KPIs primero con el botón:\n"
-                    "'🔄 Actualizar KPIs con Datos Reales'"
-                )
-                return
-            
-            # Usar el archivo más reciente
-            latest_kpi_file = max(kpi_files, key=os.path.getmtime)
-            
-            print(f"📊 Usando archivo KPI: {os.path.basename(latest_kpi_file)}")
-            
-            # Generar todas las visualizaciones usando el módulo charts
-            generated_files = generate_all_charts(latest_kpi_file)
-            
-            if not generated_files:
-                QMessageBox.warning(
-                    self,
-                    "Error en Visualizaciones",
-                    "No se pudieron generar las visualizaciones.\n"
-                    "Revise los logs para más detalles."
-                )
-                return
-            
-            # Mostrar mensaje de éxito con detalles
-            charts_list = "\n".join([
-                f"• {chart_type.replace('_', ' ').title()}: {os.path.basename(path)}"
-                for chart_type, path in generated_files.items()
-            ])
-            
-            print(f"✅ Se generaron {len(generated_files)} visualizaciones exitosamente")
-            
-            QMessageBox.information(
-                self,
-                "✅ Visualizaciones Generadas",
-                f"Se generaron {len(generated_files)} gráficas de KPIs:\n\n"
-                f"{charts_list}\n\n"
-                f"📁 Ubicación: outputs/charts/\n"
-                f"📊 Datos desde: {os.path.basename(latest_kpi_file)}\n\n"
-                f"Las gráficas incluyen:\n"
-                f"📈 Evolución de ventas mensual\n"
-                f"👑 Top 10 clientes consolidados\n" 
-                f"📦 Top 10 productos por ventas\n"
-                f"📊 Distribución estados facturas\n"
-                f"💰 Composición ventas vs impuestos"
-            )
-            
+            # Mostrar mensaje de éxito si se requiere
+            if show_message and kpi_data:
+                now = datetime.now()
+                success_message = f"✅ KPIs actualizados exitosamente\n⏰ {now.strftime('%Y-%m-%d %H:%M:%S')}"
+                
+                ventas = kpi_data.get('ventas_totales', 0)
+                facturas = kpi_data.get('numero_facturas', kpi_data.get('num_facturas', 0))
+                ticket = kpi_data.get('ticket_promedio', 0)
+                
+                if ventas:
+                    success_message += f"\n💰 Ventas Totales: ${ventas:,.0f}"
+                if facturas:
+                    success_message += f"\n📄 Total Facturas: {facturas:,}"
+                if ticket:
+                    success_message += f"\n🎯 Ticket Promedio: ${ticket:,.0f}"
+                
+                # No mostrar popup por defecto para no interrumpir el flujo
+                print(success_message)
+                
         except Exception as e:
-            print(f"❌ Error generando visualizaciones: {str(e)}")
-            QMessageBox.critical(
-                self, 
-                "Error de Visualización",
-                f"Error al generar visualizaciones:\n\n{str(e)}\n\n"
-                f"Verifique que matplotlib y seaborn estén instalados."
-            )
+            print(f"❌ Error actualizando KPIs: {e}")
+            import traceback
+            traceback.print_exc()
+            self.show_error_message(f"Error actualizando KPIs: {str(e)}")
     
-    def generate_kpis_visualizations(self):
-        """Generar visualizaciones automáticas de los KPIs usando datos del JSON."""
+    def load_initial_kpis(self):
+        """Cargar KPIs iniciales desde el archivo JSON más reciente si existe."""
         try:
-            if not CHARTS_AVAILABLE:
-                QMessageBox.warning(
-                    self, 
-                    "Función No Disponible",
-                    "El módulo de visualizaciones no está disponible.\n\n"
-                    "Para instalar las dependencias necesarias:\n"
-                    "pip install matplotlib seaborn\n\n"
-                    "Luego reinicie la aplicación."
-                )
-                return
-            
-            print("📊 Iniciando generación de visualizaciones KPI...")
-            
-            # Buscar el archivo KPI más reciente
-            kpis_dir = "outputs/kpis"
-            if not os.path.exists(kpis_dir):
-                QMessageBox.warning(
-                    self,
-                    "Sin Datos KPI", 
-                    "No se encontraron datos de KPIs.\n\n"
-                    "Primero actualice los KPIs presionando:\n"
-                    "'🔄 Actualizar KPIs con Datos Reales'"
-                )
-                return
-            
-            # Encontrar archivo KPI más reciente
-            pattern = os.path.join(kpis_dir, "kpis_siigo_*.json")
-            kpi_files = glob.glob(pattern)
-            
-            if not kpi_files:
-                QMessageBox.warning(
-                    self,
-                    "Sin Archivos KPI",
-                    "No se encontraron archivos JSON de KPIs.\n\n" 
-                    "Genere los KPIs primero con el botón:\n"
-                    "'🔄 Actualizar KPIs con Datos Reales'"
-                )
-                return
-            
-            # Usar el archivo más reciente
-            latest_kpi_file = max(kpi_files, key=os.path.getmtime)
-            
-            print(f"📊 Usando archivo KPI: {os.path.basename(latest_kpi_file)}")
-            
-            # Generar todas las visualizaciones usando el módulo charts
-            generated_files = generate_all_charts(latest_kpi_file)
-            
-            if not generated_files:
-                QMessageBox.warning(
-                    self,
-                    "Error en Visualizaciones",
-                    "No se pudieron generar las visualizaciones.\n"
-                    "Revise los logs para más detalles."
-                )
-                return
-            
-            # Mostrar mensaje de éxito con detalles
-            charts_list = "\n".join([
-                f"• {chart_type.replace('_', ' ').title()}: {os.path.basename(path)}"
-                for chart_type, path in generated_files.items()
-            ])
-            
-            print(f"✅ Se generaron {len(generated_files)} visualizaciones exitosamente")
-            
-            QMessageBox.information(
-                self,
-                "✅ Visualizaciones Generadas",
-                f"Se generaron {len(generated_files)} gráficas de KPIs:\n\n"
-                f"{charts_list}\n\n"
-                f"📁 Ubicación: outputs/charts/\n"
-                f"📊 Datos desde: {os.path.basename(latest_kpi_file)}\n\n"
-                f"Las gráficas incluyen:\n"
-                f"📈 Evolución de ventas mensual\n"
-                f"👑 Top 10 clientes consolidados\n" 
-                f"📦 Top 10 productos por ventas\n"
-                f"📊 Distribución estados facturas\n"
-                f"💰 Composición ventas vs impuestos"
-            )
-            
+            kpi_files = glob.glob("outputs/kpis/kpis_siigo_*.json")
+            if kpi_files:
+                print("🔄 Cargando KPIs iniciales...")
+                self.update_kpis(None, show_message=False)  # Cargar desde JSON sin mostrar mensaje
         except Exception as e:
-            print(f"❌ Error generando visualizaciones: {str(e)}")
-            QMessageBox.critical(
-                self, 
-                "Error de Visualización",
-                f"Error al generar visualizaciones:\n\n{str(e)}\n\n"
-                f"Verifique que matplotlib y seaborn estén instalados."
-            )
+            print(f"⚠️ No se pudieron cargar KPIs iniciales: {e}")
+    
+    def show_success_message(self, message: str):
+        """Mostrar mensaje de éxito."""
+        QMessageBox.information(self, "Éxito", message)
+    
+    def show_error_message(self, message: str):
+        """Mostrar mensaje de error."""
+        QMessageBox.critical(self, "Error", message)
+    
+    def show_kpis_loading_message(self):
+        """Mostrar mensaje de carga de KPIs."""
+        QMessageBox.information(
+            self,
+            "Generando KPIs",
+            "⏳ Generando KPIs...\n\n"
+            "Este proceso puede tomar unos minutos dependiendo\n"
+            "de la cantidad de facturas a procesar.\n\n"
+            "Por favor espere..."
+        )
+    
+    def resizeEvent(self, event):
+        """Manejar redimensionamiento del widget."""
+        super().resizeEvent(event)
+        
+        # Ajustar tamaño de gráficos si es necesario
+        if hasattr(self, 'chart_factory'):
+            # Los gráficos se redimensionan automáticamente con matplotlib
+            pass
