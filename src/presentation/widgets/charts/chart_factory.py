@@ -109,7 +109,7 @@ class ChartFactory:
         colors = ['#007bff', '#28a745']
         
         bars = ax.bar(categories, values, color=colors, alpha=0.7, width=0.6)
-        ax.set_title('Ventas vs Facturas', fontsize=12, fontweight='bold', pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         ax.tick_params(axis='both', colors='#1976d2', labelsize=10)
         
         # Agregar valores en las barras con mejor posicionamiento
@@ -161,7 +161,7 @@ class ChartFactory:
         
         # Crear gráfico de barras horizontales
         bars = ax.barh(nombres, ventas, color='#007bff', alpha=0.7, height=0.7)
-        ax.set_title('Top 10 Clientes', fontsize=12, fontweight='bold', pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         ax.set_xlabel('Ventas (Millones $)', fontsize=11, color='#1976d2')
         ax.tick_params(axis='both', colors='#1976d2', labelsize=10)
         
@@ -220,21 +220,19 @@ class ChartFactory:
             labels.append('Otros')
             sizes.append(otros_ventas)
         
-        # Crear pie chart con mejor configuración
+        # Crear pie chart con mejor configuración según Copilot Prompt
         colors = plt.cm.Set3(np.linspace(0, 1, len(labels)))
-        wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct='%1.1f%%',
+        wedges, texts, autotexts = ax.pie(sizes, labels=None, autopct='%1.1f%%',
                                          colors=colors, startangle=90, 
-                                         textprops={'fontsize': 9},
-                                         pctdistance=0.85)
+                                         labeldistance=1.1, pctdistance=0.8,
+                                         textprops={'fontsize': 8})
         
-        ax.set_title('Concentración de Ventas por Cliente', fontsize=12, fontweight='bold', 
-                    pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         
-        # Mejorar legibilidad de textos
-        for text in texts:
-            text.set_color('#1976d2')
-            text.set_fontsize(9)
-            text.set_fontweight('bold')
+        # Leyenda externa según Copilot Prompt
+        ax.legend(wedges, labels, loc="center left", bbox_to_anchor=(1, 0, 0.5, 1), fontsize=8)
+        
+        # Mejorar legibilidad de porcentajes
         for autotext in autotexts:
             autotext.set_color('white')
             autotext.set_fontsize(8)
@@ -290,27 +288,22 @@ class ChartFactory:
         
         tickets = [cliente.get('ticket_promedio', 0) / 1_000_000 for cliente in top_8_ticket]
         
-        # Crear gráfico de barras con mejor espaciado
+        # Crear gráfico de barras según Copilot Prompt
         x_pos = range(len(nombres))
         bars = ax.bar(x_pos, tickets, color='#28a745', alpha=0.7, width=0.7)
-        ax.set_title('Top Clientes - Mayor Ticket Promedio', fontsize=12, fontweight='bold', 
-                    pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         ax.set_ylabel('Ticket Promedio (Millones $)', fontsize=11, color='#1976d2')
         ax.set_xticks(x_pos)
-        ax.set_xticklabels(nombres, rotation=45, ha='right', fontsize=9, color='#1976d2')
+        ax.set_xticklabels(nombres, rotation=45, ha='right', fontsize=8, color='#1976d2')
         ax.tick_params(axis='both', colors='#1976d2')
         
-        # Agregar valores en las barras
-        for bar, value in zip(bars, tickets):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + max(tickets) * 0.02,
-                   f'{value:.1f}M', ha='center', va='bottom', fontsize=9, 
-                   color='#1976d2', fontweight='bold')
+        # Usar bar_label según Copilot Prompt
+        ax.bar_label(bars, labels=[f'{v:.1f}M' for v in tickets], 
+                    fontsize=8, color='#1976d2', fontweight='bold')
         
         ax.grid(True, alpha=0.3, axis='y')
-        # Mejor ajuste de layout para evitar amontonamiento de texto
-        fig.subplots_adjust(left=0.15, right=0.95, top=0.85, bottom=0.25)
-        fig.tight_layout(pad=2.0)
+        # Usar tight_layout según Copilot Prompt
+        fig.tight_layout()
 
         return canvas
     
@@ -345,8 +338,7 @@ class ChartFactory:
         # Crear scatter plot con mejor configuración
         scatter = ax.scatter(x, y, s=sizes, alpha=0.7, c=range(len(x)), cmap='viridis', edgecolors='white')
         
-        ax.set_title('Ventas vs Facturas por Cliente\n(Tamaño = Ticket Promedio)', 
-                    fontsize=12, fontweight='bold', pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         ax.set_xlabel('Número de Facturas', fontsize=11, color='#1976d2')
         ax.set_ylabel('Ventas (Millones $)', fontsize=11, color='#1976d2')
         ax.tick_params(axis='both', colors='#1976d2', labelsize=10)
@@ -392,8 +384,7 @@ class ChartFactory:
         ax1.set_ylabel('% Individual de Ventas', color='#007bff', fontsize=11, fontweight='bold')
         ax1.set_xlabel('Ranking de Clientes (Top 12)', fontsize=11, color='#1976d2')
         ax1.tick_params(axis='both', colors='#1976d2', labelsize=10)
-        ax1.set_title('Análisis Pareto: Concentración de Ventas por Cliente', 
-                     fontsize=12, fontweight='bold', pad=20, color='#1976d2')
+    # Título oculto, el card lo muestra externamente
         
         # Línea de pareto con mejor configuración
         ax2 = ax1.twinx()
