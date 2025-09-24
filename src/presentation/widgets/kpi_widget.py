@@ -40,6 +40,8 @@ class KPIWidget(QWidget):
         self._cache_timestamp = 0
         self._kpi_labels = {}
         self._setup_ui()
+        # Forzar recarga de datos y actualización de KPIs al iniciar
+        self.refresh_data()
     
     def _setup_ui(self):
         """Configurar la interfaz de usuario del widget de KPIs."""
@@ -97,13 +99,23 @@ class KPIWidget(QWidget):
         self._kpi_labels['clientes'] = self._create_kpi_card(
             "👥", "Clientes Únicos", "0", "#6f42c1"
         )
-        
-        # Spacer para centrar los dos KPIs
+        self._kpi_labels['utilidad_neta'] = self._create_kpi_card(
+            "💸", "Utilidad Neta", "$0", "#17a2b8"
+        )
+        self._kpi_labels['cuentas_cobrar'] = self._create_kpi_card(
+            "📥", "Cuentas por Cobrar", "$0", "#ffc107"
+        )
+        self._kpi_labels['cuentas_pagar'] = self._create_kpi_card(
+            "📤", "Cuentas por Pagar", "$0", "#e83e8c"
+        )
+        # Spacer para centrar los KPIs
         second_row.addStretch()
         second_row.addWidget(self._kpi_labels['cliente_top'])
         second_row.addWidget(self._kpi_labels['clientes'])
+        second_row.addWidget(self._kpi_labels['utilidad_neta'])
+        second_row.addWidget(self._kpi_labels['cuentas_cobrar'])
+        second_row.addWidget(self._kpi_labels['cuentas_pagar'])
         second_row.addStretch()
-        
         parent_layout.addLayout(second_row)
     
     def _create_kpi_card(self, icon: str, title: str, value: str, color: str) -> QFrame:
@@ -123,53 +135,41 @@ class KPIWidget(QWidget):
         card.setFrameStyle(QFrame.Shape.StyledPanel)
         card.setStyleSheet(f"""
             QFrame {{
-                background-color: white;
-                border: 2px solid {color};
-                border-radius: 10px;
-                padding: 15px;
-            }}
-            QFrame:hover {{
-                border-color: #1976d2;
-                box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+                background-color: {color};
+                border-radius: 8px;
+                padding: 12px;
             }}
         """)
-        
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
-        
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
         # Icono
         icon_label = QLabel(icon)
-        icon_font = QFont("Segoe UI Emoji", 20)
+        icon_font = QFont("Segoe UI Emoji", 18)
         icon_label.setFont(icon_font)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        icon_label.setStyleSheet("color: white;")
         layout.addWidget(icon_label)
-        
         # Título
         title_label = QLabel(title)
         title_font = QFont("Segoe UI", 10, QFont.Weight.Bold)
         title_label.setFont(title_font)
-        title_label.setStyleSheet(f"color: {color};")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("color: white;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         title_label.setWordWrap(True)
         layout.addWidget(title_label)
-        
         # Valor
         value_label = QLabel(value)
-        value_font = QFont("Segoe UI", 12, QFont.Weight.Bold)
+        value_font = QFont("Segoe UI", 13, QFont.Weight.Bold)
         value_label.setFont(value_font)
-        value_label.setStyleSheet("color: #1976d2;")
-        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        value_label.setStyleSheet("color: black;")
+        value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         value_label.setWordWrap(True)
         layout.addWidget(value_label)
-        
         # Guardar referencia al label de valor para actualizaciones
         card.value_label = value_label
-        
-        # Configurar tamaño mínimo y política de tamaño
-        card.setMinimumSize(180, 120)
-        card.setMaximumHeight(140)
-        
+        card.setMinimumSize(180, 100)
+        card.setMaximumHeight(120)
         return card
     
     def _get_kpis_data(self) -> Dict[str, Any]:
@@ -247,43 +247,69 @@ class KPIWidget(QWidget):
         else:
             return f"{number:,}"
     
-    def update_kpis(self):
-        """Actualizar todos los KPIs con los datos más recientes."""
-        kpis = self._get_kpis_data()
-        
+    def update_kpis(self, kpi_data: Dict[str, Any] = None):
+        """Actualizar todos los KPIs con los datos más recientes o datos proporcionados."""
+        # Forzar limpieza de cache antes de cada actualización
+        self._kpis_cache = None
+        self._cache_timestamp = 0
+        kpis = kpi_data if kpi_data is not None else self._get_kpis_data()
+
+        print("[DEBUG] KPIWidget.update_kpis received:", kpis)
+
         if not kpis:
-            # Si no hay datos, mostrar valores por defecto
+            print("[DEBUG] No KPI data found, showing defaults.")
             self._update_kpi_value('ventas', "$0")
             self._update_kpi_value('facturas', "0")
             self._update_kpi_value('ticket', "$0")
             self._update_kpi_value('cliente_top', "Sin datos")
             self._update_kpi_value('clientes', "0")
+            self._update_kpi_value('utilidad_neta', "$0")
+            self._update_kpi_value('cuentas_cobrar', "$0")
+            self._update_kpi_value('cuentas_pagar', "$0")
             return
-        
-        # Actualizar KPIs con datos reales
+
+        # Actualizar KPIs con datos reales y debug prints
         ventas_totales = kpis.get('ventas_totales', 0)
+        print(f"[DEBUG] ventas_totales: {ventas_totales}")
         self._update_kpi_value('ventas', self._format_currency(ventas_totales))
-        
-        numero_facturas = kpis.get('numero_facturas', 0)
+
+        numero_facturas = kpis.get('numero_facturas', kpis.get('num_facturas', 0))
+        print(f"[DEBUG] numero_facturas: {numero_facturas}")
         self._update_kpi_value('facturas', self._format_number(numero_facturas))
-        
+
         ticket_promedio = kpis.get('ticket_promedio', 0)
+        print(f"[DEBUG] ticket_promedio: {ticket_promedio}")
         self._update_kpi_value('ticket', self._format_currency(ticket_promedio))
-        
+
         # Cliente principal
         ventas_clientes = kpis.get('ventas_por_cliente', [])
+        print(f"[DEBUG] ventas_por_cliente: {ventas_clientes[:1]}")
         if ventas_clientes:
             top_cliente = ventas_clientes[0]
             nombre = top_cliente.get('nombre_display', f"NIT {top_cliente.get('nit', 'N/A')}")
             if len(nombre) > 25:
                 nombre = nombre[:22] + "..."
+            print(f"[DEBUG] cliente_top: {nombre}")
             self._update_kpi_value('cliente_top', nombre)
         else:
+            print("[DEBUG] No top client found.")
             self._update_kpi_value('cliente_top', "Sin datos")
-        
+
         clientes_unicos = kpis.get('clientes_unicos', 0)
+        print(f"[DEBUG] clientes_unicos: {clientes_unicos}")
         self._update_kpi_value('clientes', self._format_number(clientes_unicos))
-        
+
+        # Nuevos KPIs
+        utilidad_neta = kpis.get('utilidad_neta', 0)
+        print(f"[DEBUG] utilidad_neta: {utilidad_neta}")
+        self._update_kpi_value('utilidad_neta', self._format_currency(utilidad_neta))
+        cuentas_cobrar = kpis.get('cuentas_por_cobrar', 0)
+        print(f"[DEBUG] cuentas_por_cobrar: {cuentas_cobrar}")
+        self._update_kpi_value('cuentas_cobrar', self._format_currency(cuentas_cobrar))
+        cuentas_pagar = kpis.get('cuentas_por_pagar', 0)
+        print(f"[DEBUG] cuentas_por_pagar: {cuentas_pagar}")
+        self._update_kpi_value('cuentas_pagar', self._format_currency(cuentas_pagar))
+
         # Aplicar tooltips educativos
         self._apply_tooltips()
     
@@ -298,7 +324,10 @@ class KPIWidget(QWidget):
         if kpi_key in self._kpi_labels:
             kpi_card = self._kpi_labels[kpi_key]
             if hasattr(kpi_card, 'value_label'):
+                print(f"[DEBUG] Updating KPI '{kpi_key}' with value: {new_value}")
                 kpi_card.value_label.setText(new_value)
+                kpi_card.value_label.repaint()
+                kpi_card.repaint()
     
     def _apply_tooltips(self):
         """Aplicar tooltips educativos a todos los KPIs."""
@@ -307,7 +336,10 @@ class KPIWidget(QWidget):
             'facturas': 'total_invoices', 
             'ticket': 'avg_ticket',
             'cliente_top': 'top_client',
-            'clientes': 'unique_clients'
+            'clientes': 'unique_clients',
+            'utilidad_neta': 'net_profit',
+            'cuentas_cobrar': 'accounts_receivable',
+            'cuentas_pagar': 'accounts_payable'
         }
         
         for kpi_key, tooltip_type in tooltip_mapping.items():
