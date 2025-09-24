@@ -110,10 +110,9 @@ class DashboardWidget(QWidget):
         """Crear la primera tab con KPIs básicos usando componentes modulares y visualización de tarjetas."""
         basic_tab = QWidget()
         layout = QVBoxLayout(basic_tab)
-        
-        # KPIs Section con tarjetas visuales (restaurado del backup)
-        kpis_section = self.create_kpis_section()
-        layout.addWidget(kpis_section)
+
+        # KPIs Section usando el KPIWidget modular (muestra todos los KPIs definidos)
+        layout.addWidget(self.kpi_widget)
 
         # Botones de acción (en card)
         actions = self.create_action_buttons()
@@ -122,7 +121,7 @@ class DashboardWidget(QWidget):
         # Información de upgrade (en card)
         upgrade = self.create_upgrade_section()
         layout.addWidget(self._wrap_in_card(upgrade))
-        
+
         # Aplicar tooltip educativo a la pestaña
         tab_index = self.tab_widget.addTab(basic_tab, "📊 KPIs Básicos")
         TooltipManager.apply_tab_tooltips(self.tab_widget, tab_index, 'dashboard')
@@ -267,30 +266,27 @@ class DashboardWidget(QWidget):
             kpi_frame.setFrameStyle(QFrame.Box)
             kpi_frame.setMinimumWidth(200)
             kpi_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            kpi_frame.setStyleSheet(f"""
-                QFrame {{
-                    background-color: {color};
+            # Override ALL colors to white background, black text
+            kpi_frame.setStyleSheet("""
+                QFrame {
+                    background-color: white !important;
                     border-radius: 8px;
                     padding: 8px;
-                }}
+                    border: 1px solid #bbb;
+                }
             """)
-            
+
             kpi_layout_inner = QVBoxLayout(kpi_frame)
-            
             label_widget = QLabel(label)
-            label_widget.setStyleSheet("color: white; font-size: 10px; font-weight: bold;")
+            label_widget.setStyleSheet("color: black !important; font-size: 10px; font-weight: bold; background: transparent !important;")
             label_widget.setWordWrap(True)
-            
             value_widget = QLabel(value)
-            value_widget.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
+            value_widget.setStyleSheet("color: black !important; font-size: 13px; font-weight: bold; background: transparent !important;")
             value_widget.setWordWrap(True)
-            
             # Guardar referencia al widget de valor para actualizarlo después (usando nombres del backup)
             self.kpi_widgets[kpi_names[i]] = value_widget
-            
             kpi_layout_inner.addWidget(label_widget)
             kpi_layout_inner.addWidget(value_widget)
-            
             # Distribuir KPIs en múltiples filas para mejor responsive (3 por fila como backup)
             row = i // 3  # Máximo 3 KPIs por fila
             col = i % 3
@@ -857,18 +853,17 @@ class DashboardWidget(QWidget):
 
     def update_kpis(self, kpi_data: Dict[str, Any] = None, show_message: bool = True):
         """
-        Actualizar KPIs combinando datos del JSON con las tarjetas visuales.
-        
+        Actualizar KPIs delegando a KPIWidget modular.
         Args:
             kpi_data: Diccionario con datos de KPIs del controlador (opcional)
             show_message: Si mostrar mensaje de confirmación
         """
         try:
-            print("🔥 ===== DASHBOARD update_kpis REFACTORIZADO CON TARJETAS =====")
+            print("🔥 ===== DASHBOARD update_kpis DELEGADO A KPIWidget =====")
             print(f"📊 Datos KPI recibidos: {kpi_data is not None}")
             print(f"📊 Mostrar mensaje: {show_message}")
-            
-            # Si no se pasan datos, intentar cargar desde JSON (como hace KPIWidget)
+
+            # Si no se pasan datos, intentar cargar desde JSON
             if not kpi_data:
                 kpi_files = glob.glob("outputs/kpis/kpis_siigo_*.json")
                 if kpi_files:
@@ -879,69 +874,37 @@ class DashboardWidget(QWidget):
                         print(f"📂 Datos cargados desde: {latest_file}")
                     except Exception as e:
                         print(f"⚠️ Error cargando datos JSON: {e}")
-            
+
+            # Delegar actualización a KPIWidget modular
             if kpi_data:
-                print(f"📊 Claves KPI recibidas: {list(kpi_data.keys())}")
-            
-            # Actualizar las tarjetas visuales de KPIs con los datos reales
-            if kpi_data and hasattr(self, 'kpi_widgets') and self.kpi_widgets:
-                print("🎨 Actualizando tarjetas visuales de KPIs...")
-                
-                # Obtener datos con valores por defecto seguros
-                ventas_totales = kpi_data.get('ventas_totales', 0)
-                num_facturas = kpi_data.get('numero_facturas', kpi_data.get('num_facturas', 0))
-                ticket_promedio = kpi_data.get('ticket_promedio', 0)
-                
-                # Para el top cliente, revisar varias posibles claves
-                top_cliente = "Calculando..."
-                if 'cliente_top' in kpi_data and kpi_data['cliente_top']:
-                    if isinstance(kpi_data['cliente_top'], dict):
-                        top_cliente = kpi_data['cliente_top'].get('name', 'Calculando...')
-                    else:
-                        top_cliente = str(kpi_data['cliente_top'])
-                elif 'top_cliente' in kpi_data:
-                    top_cliente = str(kpi_data['top_cliente'])
-                
-                # Mapear datos para las tarjetas visuales
-                kpi_mappings = {
-                    "ventas_totales": f"${ventas_totales:,.0f}",
-                    "num_facturas": f"{num_facturas:,}",
-                    "ticket_promedio": f"${ticket_promedio:,.0f}",
-                    "top_cliente": f"{top_cliente[:25]}",
-                    "ultima_sync": f"Actualizado {datetime.now().strftime('%H:%M:%S')}"
-                }
-                
-                # Actualizar cada tarjeta visual
-                widgets_actualizados = 0
-                for kpi_name, kpi_value in kpi_mappings.items():
-                    if kpi_name in self.kpi_widgets:
-                        self.kpi_widgets[kpi_name].setText(str(kpi_value))
-                        widgets_actualizados += 1
-                        print(f"    🎨 {kpi_name}: {kpi_value}")
-                
-                print(f"📊 Total tarjetas actualizadas: {widgets_actualizados}")
+                # Si el JSON tiene 'kpis', extraer solo ese diccionario
+                if isinstance(kpi_data, dict) and 'kpis' in kpi_data:
+                    kpi_data = kpi_data['kpis']
+                self.kpi_widget.update_kpis(kpi_data)
+                # Forzar actualización visual del widget y sus hijos
+                self.kpi_widget.repaint()
+                self.kpi_widget.update()
+                for child in self.kpi_widget.findChildren(QWidget):
+                    child.repaint()
+                    child.update()
+                print("🎨 KPIs actualizados en KPIWidget modular.")
             else:
-                print("⚠️ No hay datos de KPI o no existen las tarjetas visuales")
-            
+                print("⚠️ No hay datos de KPI para actualizar en KPIWidget.")
+
             # Mostrar mensaje de éxito si se requiere
             if show_message and kpi_data:
                 now = datetime.now()
                 success_message = f"✅ KPIs actualizados exitosamente\n⏰ {now.strftime('%Y-%m-%d %H:%M:%S')}"
-                
                 ventas = kpi_data.get('ventas_totales', 0)
                 facturas = kpi_data.get('numero_facturas', kpi_data.get('num_facturas', 0))
                 ticket = kpi_data.get('ticket_promedio', 0)
-                
                 if ventas:
                     success_message += f"\n💰 Ventas Totales: ${ventas:,.0f}"
                 if facturas:
                     success_message += f"\n📄 Total Facturas: {facturas:,}"
                 if ticket:
                     success_message += f"\n🎯 Ticket Promedio: ${ticket:,.0f}"
-                
-                # No mostrar popup por defecto para no interrumpir el flujo
                 print(success_message)
-                
         except Exception as e:
             print(f"❌ Error actualizando KPIs: {e}")
             import traceback
